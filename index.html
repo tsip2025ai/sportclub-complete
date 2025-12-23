@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="theme-color" content="#14a34b"/>
+<meta name="description" content="Διαχείριση Αθλητικού Σωματείου - Παίκτες, Προπονήσεις, Παρουσίες"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" type="image/png" href="icon-192.png"/>
+<title>SportClub Pro Manager</title>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+
+<style>
+:root{--bg-primary:#0a0a12;--bg-secondary:#12121e;--bg-card:#1a1a2a;--accent:#14a34b;--accent-dark:#0d7a35;--text-primary:#e0e0e0;--text-secondary:#a0a0b0;--border:#2a2a3a;--success:#14a34b;--warning:#f59e0b;--danger:#ef162a;--info:#0ea5e9;--shadow:0 4px 6px -1px rgba(0,0,0,0.3)}
+[data-theme="light"]{--bg-primary:#f5f5f5;--bg-secondary:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--border:#e0e0e0;--shadow:0 4px 6px -1px rgba(0,0,0,0.1)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;display:flex;flex-direction:column;line-height:1.5;transition:background .3s,color .3s}
+header{background:var(--bg-secondary);border-bottom:2px solid var(--accent);padding:.75rem 1rem;box-shadow:var(--shadow);position:sticky;top:0;z-index:100}
+.header-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:.5rem;font-size:1.1rem;font-weight:700;color:var(--accent)}
+.brand svg{width:28px;height:28px;flex-shrink:0}
+.status-indicators{display:flex;gap:.75rem;align-items:center;font-size:.8rem;flex-wrap:wrap}
+.status{display:flex;align-items:center;gap:.25rem;font-weight:500}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--text-secondary)}
+.status-dot.online{background:var(--success);animation:pulse-dot 2s infinite}
+.status-dot.syncing{background:var(--info);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes pulse-dot{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+.nav-tabs{display:flex;gap:.25rem;overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.tab-btn{padding:.5rem .875rem;border:none;background:0 0;color:var(--text-secondary);font-size:.8rem;font-weight:500;cursor:pointer;border-radius:.5rem;white-space:nowrap;transition:all .2s;display:flex;align-items:center;gap:.4rem;flex-shrink:0}
+.tab-btn:hover{background:var(--bg-card);color:var(--text-primary)}
+.tab-btn.active{background:var(--accent);color:#fff}
+main{flex:1;max-width:1400px;width:100%;margin:0 auto;padding:.75rem;padding-bottom:2rem}
+.view{display:none;animation:fadeIn .3s}.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:.75rem;padding:1rem;box-shadow:var(--shadow);margin-bottom:.75rem}
+.card:hover{box-shadow:0 8px 12px -2px rgba(0,0,0,.2)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
+.card-title{font-size:1rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+.btn{padding:.5rem .75rem;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);border-radius:.5rem;font-size:.8rem;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;transition:all .2s;text-decoration:none;white-space:nowrap;user-select:none}
+.btn:hover{background:var(--border)}
+.btn:active{transform:scale(.95)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn-danger:hover{background:#d11020}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem}
+.stat-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:.5rem;padding:.875rem;text-align:center;cursor:pointer;transition:all .3s}
+.stat-value{font-size:1.75rem;font-weight:800;color:var(--accent);line-height:1}
+.stat-label{font-size:.7rem;color:var(--text-secondary);margin-top:.25rem}
+.stat-icon{font-size:1.25rem;margin-bottom:.5rem}
+.team-selector{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;overflow-x:auto;scrollbar-width:none}
+.team-chip{padding:.5rem 1rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:9999px;font-size:.8rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+.team-chip:hover,.team-chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.player-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:.75rem;padding:.875rem;margin-bottom:.75rem;position:relative}
+.player-card-header{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem}
+.player-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-dark) 100%);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;color:#fff;position:relative;overflow:hidden}
+.player-avatar img{width:100%;height:100%;object-fit:cover}
+.player-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;font-size:.75rem}
+.player-stat{text-align:center;padding:.5rem;background:var(--bg-card);border-radius:.5rem}
+.player-stat-value{font-size:1.1rem;font-weight:700;color:var(--accent)}
+.player-stat-label{color:var(--text-secondary);font-size:.65rem}
+.badge{display:inline-flex;padding:.125rem .5rem;border-radius:9999px;font-size:.7rem;font-weight:600;text-transform:uppercase}
+.badge.active{background:var(--success);color:#fff}
+.badge.inactive{background:var(--danger);color:#fff}
+.form-group{display:grid;gap:.25rem;margin-bottom:.75rem}
+label{font-size:.8rem;font-weight:500;color:var(--text-secondary)}
+input,select,textarea{padding:.625rem .75rem;border:1px solid var(--border);border-radius:.5rem;background:var(--bg-secondary);color:var(--text-primary);font-size:.875rem;transition:all .2s;width:100%}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px rgba(20,163,75,.1)}
+.form-actions{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:center;justify-content:center;padding:1rem;overflow-y:auto}
+.modal.active{display:flex}
+.modal-content{background:var(--bg-card);border:1px solid var(--border);border-radius:.75rem;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;padding:1.25rem}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.close-btn{background:0 0;border:none;color:var(--text-secondary);font-size:1.75rem;cursor:pointer;padding:.25rem;transition:all .2s;line-height:1}
+.close-btn:hover{color:var(--text-primary)}
+.list-empty{text-align:center;padding:2rem;color:var(--text-secondary);font-size:.875rem}
+.attendance-mark{width:2.5rem;height:2.5rem;border-radius:.5rem;border:2px solid var(--border);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;transition:all .2s}
+.attendance-mark.present{background:var(--success);border-color:var(--success);color:#fff}
+.attendance-mark.absent{background:var(--danger);border-color:var(--danger);color:#fff}
+.schedule-item{display:flex;align-items:center;justify-content:space-between;padding:.75rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:.5rem;margin-bottom:.5rem;gap:.5rem}
+.theme-toggle{cursor:pointer;padding:.5rem;border-radius:.5rem;transition:all .2s;font-size:1.25rem;display:flex;align-items:center;justify-content:center}
+.theme-toggle:hover{background:var(--bg-card)}
+.progress-bar{width:100%;height:8px;background:var(--bg-secondary);border-radius:9999px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent) 0%,var(--accent-dark) 100%);transition:width .5s}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem}
+.toggle-switch{display:flex;align-items:center;gap:.75rem;padding:.5rem 0}
+.toggle-switch input[type=checkbox]{width:44px;height:22px;appearance:none;background:var(--bg-secondary);border:1px solid var(--border);border-radius:9999px;position:relative;cursor:pointer;transition:all .3s}
+.toggle-switch input[type=checkbox]::before{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--text-secondary);border-radius:50%;transition:all .3s}
+.toggle-switch input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+.toggle-switch input[type=checkbox]:checked::before{transform:translateX(22px);background:#fff}
+.notification-toast{position:fixed;bottom:1rem;right:1rem;left:1rem;max-width:360px;margin:0 auto;background:var(--bg-card);border:1px solid var(--border);border-radius:.5rem;padding:1rem;box-shadow:var(--shadow);transform:translateY(150%);transition:transform .3s;z-index:300}
+.notification-toast.show{transform:translateY(0)}
+.notification-toast.success{border-left:4px solid var(--success)}
+.notification-toast.error{border-left:4px solid var(--danger)}
+.notification-toast.info{border-left:4px solid var(--info)}
+.chart-container{position:relative;height:250px;margin-top:1rem}
+.bar-chart{display:flex;align-items:flex-end;justify-content:space-around;height:100%;gap:.4rem;padding:1rem 0}
+.bar{flex:1;background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);border-radius:.25rem .25rem 0 0;position:relative;min-height:2px;transition:all .5s}
+.bar-label{position:absolute;bottom:-1.5rem;left:50%;transform:translateX(-50%);font-size:.7rem;color:var(--text-secondary);white-space:nowrap}
+.bar-value{position:absolute;top:-1.5rem;left:50%;transform:translateX(-50%);font-size:.7rem;font-weight:600;color:var(--accent)}
+.search-box{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
+.search-box input{flex:1;min-width:150px}
+.search-box select{min-width:120px}
+.calendar-view{display:grid;grid-template-columns:repeat(7,1fr);gap:.4rem;margin-top:1rem}
+.calendar-day{aspect-ratio:1;border:1px solid var(--border);border-radius:.5rem;padding:.4rem;font-size:.7rem;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.calendar-day.has-training{background:var(--accent);color:#fff;font-weight:600}
+.calendar-day.today{border:2px solid var(--info)}
+.sync-code{font-size:1.25rem;font-weight:800;letter-spacing:.2rem;color:var(--accent);padding:1rem;background:var(--bg-secondary);border:2px solid var(--accent);border-radius:.5rem;text-align:center;margin:1rem 0;word-break:break-all;user-select:all;font-family:monospace}
+.info-box{background:var(--info);color:#000;padding:1rem;border-radius:.5rem;margin-bottom:1rem;font-size:.8rem}
+.install-prompt{background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;padding:1rem;border-radius:.5rem;margin-bottom:1rem;display:none;align-items:center;gap:.75rem}
+.install-prompt.show{display:flex}
+.install-prompt button{background:#fff;color:var(--accent);border:none;padding:.5rem 1rem;border-radius:.5rem;font-weight:600;cursor:pointer}
+.camera-preview{width:100%;max-width:300px;height:300px;background:var(--bg-secondary);border:2px dashed var(--border);border-radius:.5rem;display:flex;align-items:center;justify-content:center;margin:1rem auto;overflow:hidden;position:relative}
+.camera-preview img,.camera-preview video{width:100%;height:100%;object-fit:cover}
+.location-badge{display:inline-flex;align-items:center;gap:.25rem;padding:.25rem .5rem;background:var(--info);color:#fff;border-radius:.5rem;font-size:.7rem;font-weight:600}
+.share-btn{position:absolute;top:.5rem;right:.5rem;background:var(--accent);color:#fff;border:none;padding:.5rem;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow)}
+@media(max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr)}.settings-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- Install Prompt -->
+<div class="install-prompt" id="installPrompt">
+  <div style="flex:1">📱 <strong>Εγκατάσταση</strong><br>Προσθέστε την εφαρμογή στην αρχική οθόνη</div>
+  <button id="installBtn">Εγκατάσταση</button>
+  <button onclick="document.getElementById('installPrompt').classList.remove('show')" style="background:transparent;color:#fff;">✕</button>
+</div>
+
+<header>
+<div class="header-inner">
+<div class="brand">
+<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+<span id="brandName">SportClub Pro</span>
+</div>
+<div class="status-indicators">
+<div class="theme-toggle" id="themeToggle"><span id="themeIcon">🌙</span></div>
+<div class="status"><span class="status-dot" id="syncDot"></span><span id="syncStatus">Offline</span></div>
+<div class="status" id="timestamp"></div>
+</div>
+<nav class="nav-tabs">
+<button class="tab-btn active" data-view="dashboard">📊 Dashboard</button>
+<button class="tab-btn" data-view="teams">🏆 Τμήματα</button>
+<button class="tab-btn" data-view="players">👥 Παίκτες</button>
+<button class="tab-btn" data-view="schedule">📅 Πρόγραμμα</button>
+<button class="tab-btn" data-view="attendance">✓ Παρουσίες</button>
+<button class="tab-btn" data-view="reports">📈 Αναφορές</button>
+<button class="tab-btn" data-view="settings">⚙️ Ρυθμίσεις</button>
+</nav>
+</div>
+</header>
+
+<main>
+<!-- DASHBOARD -->
+<section class="view active" id="dashboard">
+<div class="card">
+<div class="card-header">
+<h2 class="card-title">🏆 Τμήμα</h2>
+<button class="btn btn-primary" id="shareReportBtn">📤 Μοιρασμός</button>
+</div>
+<div class="team-selector" id="dashboardTeamSelector"></div>
+</div>
+<div class="card">
+<div class="card-header"><h2 class="card-title">📊 Στατιστικά</h2><span id="currentDate" style="font-size:.75rem;color:var(--text-secondary);"></span></div>
+<div class="stats-grid">
+<div class="stat-card" onclick="switchView('players')"><div class="stat-icon">👥</div><div class="stat-value" id="totalPlayers">0</div><div class="stat-label">Παίκτες</div></div>
+<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" id="activePlayers">0</div><div class="stat-label">Ενεργοί</div></div>
+<div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value" id="todayAttendance">0%</div><div class="stat-label">Σήμερα</div></div>
+<div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value" id="weeklyAvg">0%</div><div class="stat-label">Εβδομάδα</div></div>
+</div>
+</div>
+<div class="card"><h2 class="card-title">📅 Επόμενες Προπονήσεις</h2><div id="upcomingSchedule"></div></div>
+<div class="card"><h2 class="card-title">📊 Εβδομαδιαία Παρουσία</h2><div class="chart-container"><div class="bar-chart" id="weeklyChart"></div></div></div>
+</section>
+
+<!-- TEAMS -->
+<section class="view" id="teams">
+<div class="card">
+<div class="card-header"><h2 class="card-title">🏆 Τμήματα</h2><button class="btn btn-primary" id="addTeamBtn">➕ Νέο</button></div>
+<div id="teamsContainer"></div>
+</div>
+</section>
+
+<!-- PLAYERS -->
+<section class="view" id="players">
+<div class="card">
+<div class="card-header"><h2 class="card-title">👥 Παίκτες</h2><button class="btn btn-primary" id="addPlayerBtn">➕</button></div>
+<div class="team-selector" id="playerTeamSelector"></div>
+<div class="search-box">
+<input type="text" id="searchPlayers" placeholder="🔍 Αναζήτηση..."/>
+<select id="filterPosition"><option value="">Όλες θέσεις</option><option value="Τερματοφύλακας">Τερματοφύλακας</option><option value="Αμυντικός">Αμυντικός</option><option value="Μέσος">Μέσος</option><option value="Επιθετικός">Επιθετικός</option></select>
+<select id="filterStatus"><option value="">Όλες</option><option value="active">Ενεργοί</option><option value="inactive">Ανενεργοί</option></select>
+</div>
+<div id="playersContainer"></div>
+</div>
+</section>
+
+<!-- SCHEDULE -->
+<section class="view" id="schedule">
+<div class="card">
+<div class="card-header"><h2 class="card-title">📅 Πρόγραμμα</h2><button class="btn btn-primary" id="addScheduleBtn">➕</button></div>
+<div class="team-selector" id="scheduleTeamSelector"></div>
+<div class="calendar-view" id="calendarView"></div>
+<div id="scheduleList" style="margin-top:1rem;"></div>
+</div>
+</section>
+
+<!-- ATTENDANCE -->
+<section class="view" id="attendance">
+<div class="card">
+<div class="card-header"><h2 class="card-title">✓ Παρουσίες</h2>
+<div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+<input type="date" id="attendanceDate" style="width:auto;"/>
+<button class="btn" id="allPresentBtn">✅</button>
+<button class="btn" id="allAbsentBtn">❌</button>
+<button class="btn btn-primary" id="markAttendanceBtn">✓</button>
+</div>
+</div>
+<div class="team-selector" id="attendanceTeamSelector"></div>
+<div style="padding:.75rem;background:var(--bg-secondary);border-radius:.5rem;margin-bottom:.75rem;"><strong style="font-size:.875rem;">Στατιστικά:</strong> <span id="quickStats" style="font-size:.875rem;">-</span><div class="progress-bar" style="margin-top:.5rem;"><div class="progress-fill" id="attendanceProgress"></div></div></div>
+<div id="attendanceContainer"></div>
+</div>
+</section>
+
+<!-- REPORTS -->
+<section class="view" id="reports">
+<div class="card">
+<div class="card-header"><h2 class="card-title">📈 Αναφορές</h2>
+<div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+<select id="reportPeriod"><option value="week">Εβδομάδα</option><option value="month" selected>Μήνας</option><option value="quarter">Τρίμηνο</option><option value="year">Έτος</option></select>
+<button class="btn btn-primary" id="generateReportBtn">🔄</button>
+</div>
+</div>
+<div class="team-selector" id="reportTeamSelector"></div>
+<div class="stats-grid">
+<div class="stat-card"><div class="stat-value" id="reportTotalSessions">0</div><div class="stat-label">Προπονήσεις</div></div>
+<div class="stat-card"><div class="stat-value" id="reportAvgAttendance">0%</div><div class="stat-label">Μέση Παρουσία</div></div>
+<div class="stat-card"><div class="stat-value" id="reportTopPlayer">-</div><div class="stat-label">Top Παίκτης</div></div>
+</div>
+</div>
+<div class="card"><h2 class="card-title">📊 Ανάλυση</h2><div class="chart-container"><div class="bar-chart" id="playerAttendanceChart"></div></div></div>
+</section>
+
+<!-- SETTINGS -->
+<section class="view" id="settings">
+<div class="card">
+<h2 class="card-title">⚙️ Ρυθμίσεις</h2>
+<div class="settings-grid">
+<div class="form-group"><label>Όνομα Σωματείου</label><input type="text" id="clubName"/></div>
+<div class="form-group"><label>Προπονητής</label><input type="text" id="coachName"/></div>
+</div>
+<div class="toggle-switch"><input type="checkbox" id="autoSyncEnabled" checked/><label>Αυτόματος Συγχρονισμός</label></div>
+<div class="toggle-switch"><input type="checkbox" id="notificationsEnabled"/><label>🔔 Push Notifications</label></div>
+<div class="toggle-switch"><input type="checkbox" id="backgroundSyncEnabled" checked/><label>🔄 Background Sync</label></div>
+</div>
+
+<div class="card">
+<h2 class="card-title">🔄 Multi-Device Sync</h2>
+<div class="info-box">
+<strong>📱 Πώς δουλεύει:</strong><br>
+• Όλες οι συσκευές με τον ίδιο <strong>Sync Code</strong> συγχρονίζονται αυτόματα<br>
+• Real-time updates σε όλες τις συσκευές<br>
+• Δουλεύει offline - συγχρονίζει όταν επανέλθει internet
+</div>
+<div class="sync-code" id="syncCode">XXXX-XXXX</div>
+<p style="text-align:center;color:var(--text-secondary);margin-bottom:1rem;font-size:.8rem;">Χρησιμοποίησε αυτόν τον κωδικό σε όλες τις συσκευές</p>
+<button class="btn btn-primary" id="generateSyncCodeBtn" style="width:100%;margin-bottom:.5rem;">🔄 Νέος Κωδικός</button>
+<button class="btn" id="enterSyncCodeBtn" style="width:100%;">📱 Εισαγωγή Κωδικού</button>
+<div style="margin-top:1rem;padding:.75rem;background:var(--bg-secondary);border-radius:.5rem;font-size:.8rem;">
+<div style="display:flex;justify-content:space-between;margin-bottom:.5rem;"><span>Κατάσταση:</span><strong id="connectionStatus">-</strong></div>
+<div style="display:flex;justify-content:space-between;"><span>Τελευταίος sync:</span><strong id="lastSyncTime">-</strong></div>
+</div>
+</div>
+
+<div class="card">
+<h2 class="card-title">💾 Backup</h2>
+<div class="settings-grid">
+<button class="btn btn-primary" id="backupBtn">💾 Κατέβασμα</button>
+<button class="btn btn-primary" id="restoreBtn">📤 Ανέβασμα</button>
+<input type="file" id="restoreFile" accept=".json" style="display:none;"/>
+<button class="btn btn-danger" id="clearDataBtn">🗑️ Διαγραφή</button>
+</div>
+</div>
+
+<div class="card">
+<h2 class="card-title">📱 PWA & Features Status</h2>
+<div style="padding:1rem;background:var(--bg-secondary);border-radius:.5rem;">
+<div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
+<span>PWA:</span>
+<strong id="pwaStatus">-</strong>
+</div>
+<div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
+<span>Offline Cache:</span>
+<strong id="cacheStatus">-</strong>
+</div>
+<div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
+<span>Push Notifications:</span>
+<strong id="pushStatus">-</strong>
+</div>
+<div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
+<span>Background Sync:</span>
+<strong id="bgSyncStatus">-</strong>
+</div>
+<div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
+<span>Camera:</span>
+<strong id="cameraStatus">-</strong>
+</div>
+<div style="display:flex;justify-content:space-between;">
+<span>Geolocation:</span>
+<strong id="geoStatus">-</strong>
+</div>
+</div>
+</div>
+</section>
+</main>
+
+<!-- MODALS -->
+<div class="modal" id="teamModal">
+<div class="modal-content">
+<div class="modal-header"><h2 id="teamModalTitle">Νέο Τμήμα</h2><button class="close-btn" data-close="teamModal">&times;</button></div>
+<form id="teamForm">
+<div class="form-group"><label>Όνομα *</label><input type="text" id="teamName" required placeholder="π.χ. U15"/></div>
+<div class="form-group"><label>Περιγραφή</label><textarea id="teamDesc" rows="2"></textarea></div>
+<div class="form-group"><label>Χρώμα</label><input type="color" id="teamColor" value="#14a34b"/></div>
+<div class="form-group">
+<label>📍 Τοποθεσία Γηπέδου</label>
+<input type="text" id="teamLocation" placeholder="Θα συμπληρωθεί αυτόματα" readonly/>
+<button type="button" class="btn" id="getLocationBtn">📍 Εντοπισμός</button>
+</div>
+<div class="form-actions"><button type="button" class="btn" data-close="teamModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 OK</button></div>
+</form>
+</div>
+</div>
+
+<div class="modal" id="playerModal">
+<div class="modal-content">
+<div class="modal-header"><h2 id="playerModalTitle">Παίκτης</h2><button class="close-btn" data-close="playerModal">&times;</button></div>
+<form id="playerForm">
+<div class="form-group"><label>Τμήμα *</label><select id="playerTeam" required></select></div>
+<div class="form-group"><label>Ονοματεπώνυμο *</label><input type="text" id="playerName" required/></div>
+<div class="form-group"><label>Θέση *</label><select id="playerPosition" required><option value="">Επιλέξτε...</option><option value="Τερματοφύλακας">Τερματοφύλακας</option><option value="Αμυντικός">Αμυντικός</option><option value="Μέσος">Μέσος</option><option value="Επιθετικός">Επιθετικός</option></select></div>
+<div class="form-group">
+<label>📷 Φωτογραφία</label>
+<div class="camera-preview" id="cameraPreview">
+<span style="color:var(--text-secondary);">Πάτα για φωτογραφία</span>
+</div>
+<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;"/>
+<div style="display:flex;gap:.5rem;">
+<button type="button" class="btn" id="takeCameraBtn">📷 Camera</button>
+<button type="button" class="btn" id="takePhotoBtn">🖼️ Συλλογή</button>
+<button type="button" class="btn btn-danger" id="removePhotoBtn" style="display:none;">🗑️</button>
+</div>
+</div>
+<div class="toggle-switch"><input type="checkbox" id="playerActive" checked/><label>Ενεργός</label></div>
+<div class="form-actions"><button type="button" class="btn" data-close="playerModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 OK</button></div>
+</form>
+</div>
+</div>
+
+<div class="modal" id="scheduleModal">
+<div class="modal-content">
+<div class="modal-header"><h2>Προπόνηση</h2><button class="close-btn" data-close="scheduleModal">&times;</button></div>
+<form id="scheduleForm">
+<div class="form-group"><label>Τμήμα *</label><select id="scheduleTeam" required></select></div>
+<div class="form-group"><label>Ημέρα</label><select id="scheduleDay"><option value="1" selected>Δευτέρα</option><option value="2">Τρίτη</option><option value="3">Τετάρτη</option><option value="4">Πέμπτη</option><option value="5">Παρασκευή</option><option value="6">Σάββατο</option><option value="0">Κυριακή</option></select></div>
+<div class="form-group"><label>Ώρα</label><input type="time" id="scheduleTime" value="18:00" required/></div>
+<div class="form-group"><label>Τύπος</label><input type="text" id="scheduleType" required placeholder="π.χ. Τακτική"/></div>
+<div class="form-group"><label>Τοποθεσία</label><input type="text" id="scheduleLocation" placeholder="π.χ. Γήπεδο"/></div>
+<div class="toggle-switch"><input type="checkbox" id="notifySchedule"/><label>🔔 Ειδοποίηση 1 ώρα πριν</label></div>
+<div class="form-actions"><button type="button" class="btn" data-close="scheduleModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 OK</button></div>
+</form>
+</div>
+</div>
+
+<div class="modal" id="attendanceModal">
+<div class="modal-content">
+<div class="modal-header"><h2>Σήμανση</h2><button class="close-btn" data-close="attendanceModal">&times;</button></div>
+<form id="attendanceForm">
+<div style="max-height:60vh;overflow-y:auto;" id="attendancePlayersList"></div>
+<div class="form-actions"><button type="button" class="btn" data-close="attendanceModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 OK</button></div>
+</form>
+</div>
+</div>
+
+<div class="modal" id="syncCodeModal">
+<div class="modal-content">
+<div class="modal-header"><h2>Εισαγωγή Κωδικού</h2><button class="close-btn" data-close="syncCodeModal">&times;</button></div>
+<form id="syncCodeForm">
+<div class="form-group"><label>Κωδικός Sync (8 ψηφία)</label><input type="text" id="syncCodeInput" maxlength="9" placeholder="XXXX-XXXX" style="text-align:center;font-size:1.5rem;letter-spacing:.25rem;text-transform:uppercase;font-weight:700;"/></div>
+<p style="font-size:.8rem;color:var(--text-secondary);margin-bottom:1rem;text-align:center;">Εισάγετε τον κωδικό από την άλλη συσκευή</p>
+<div class="form-actions"><button type="button" class="btn" data-close="syncCodeModal">Άκυρο</button><button type="submit" class="btn btn-primary">🔄 Συγχρονισμός</button></div>
+</form>
+</div>
+</div>
+
+<div class="modal" id="cameraModal">
+<div class="modal-content">
+<div class="modal-header"><h2>📷 Κάμερα</h2><button class="close-btn" data-close="cameraModal">&times;</button></div>
+<video id="cameraStream" autoplay playsinline style="width:100%;border-radius:.5rem;"></video>
+<div class="form-actions">
+<button type="button" class="btn" data-close="cameraModal">Άκυρο</button>
+<button type="button" class="btn btn-primary" id="capturePhotoBtn">📸 Λήψη</button>
+</div>
+<canvas id="photoCanvas" style="display:none;"></canvas>
+</div>
+</div>
+
+<div class="notification-toast" id="toast"></div>
+
+<script>
+// ============================================
+// 🔥 FIREBASE CONFIGURATION
+// ============================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDJEd_cK18ht8zbidQ9WK0vNvK_rDB5qgo",
+  authDomain: "sportclub-7b155.firebaseapp.com",
+  databaseURL: "https://sportclub-7b155-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "sportclub-7b155",
+  storageBucket: "sportclub-7b155.firebasestorage.app",
+  messagingSenderId: "621945852010",
+  appId: "1:621945852010:web:f639a432f0d13e09b3ba13"
+};
+
+let db = null;
+let messaging = null;
+let syncRef = null;
+let isInitialLoad = true;
+let cameraStream = null;
+let currentPhotoData = null;
+
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  
+  // Firebase Messaging (Push Notifications)
+  if (firebase.messaging.isSupported()) {
+    messaging = firebase.messaging();
+  }
+  
+  console.log("✅ Firebase initialized");
+} catch (e) {
+  console.error("❌ Firebase error:", e);
+}
+
+// ============================================
+// 💾 STATE
+// ============================================
+const defaultState={teams:[{id:"default",name:"Κύρια Ομάδα",description:"",color:"#14a34b",location:null}],players:[],schedules:[],attendance:[],settings:{clubName:"Αθλητικό Σωματείο",coachName:"",theme:"dark",currentTeam:"default",autoSyncEnabled:true,notificationsEnabled:false,backgroundSyncEnabled:true},sync:{lastSync:0,syncCode:"",version:1,deviceId:"",pendingSync:[]}};
+let appState=JSON.parse(JSON.stringify(defaultState));
+let editingPlayerId=null;
+let editingScheduleId=null;
+let editingTeamId=null;
+let playerFilters={search:"",position:"",status:""};
+let saveTimer=null;
+
+// ============================================
+// 🔨 UTILITIES
+// ============================================
+const $=(s)=>document.querySelector(s);
+const $$=(s)=>Array.from(document.querySelectorAll(s));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).substr(2);
+const todayISO=()=>new Date().toISOString().split("T")[0];
+const dayName=(i)=>["Κυρ","Δευ","Τρι","Τετ","Πεμ","Παρ","Σαβ"][i];
+const dayNameFull=(i)=>["Κυριακή","Δευτέρα","Τρίτη","Τετάρτη","Πέμπτη","Παρασκευή","Σάββατο"][i];
+const formatTime=(i)=>new Date(i).toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"});
+const formatDate=(i)=>new Date(i).toLocaleDateString("el-GR");
+const sortBy=(a,k,d="asc")=>[...a].sort((x,y)=>{let va=x[k],vb=y[k];if(typeof va==="string")va=va.toLowerCase();if(typeof vb==="string")vb=vb.toLowerCase();const r=(va>vb?1:va<vb?-1:0);return d==="asc"?r:-r});
+const getInitials=(n)=>{const p=n.trim().split(/\s+/);if(p.length===1)return p[0].substring(0,2).toUpperCase();return(p[0][0]+p[p.length-1][0]).toUpperCase()};
+const getPlayerAttendanceRate=(id)=>{const r=appState.attendance.filter(a=>a.playerId===id);if(!r.length)return 0;const p=r.filter(a=>a.attended).length;return Math.round((p/r.length)*100)};
+const getCurrentTeam=()=>appState.settings.currentTeam||"default";
+const setCurrentTeam=(id)=>{appState.settings.currentTeam=id;saveStateDebounced();renderActiveView()};
+const getTeamPlayers=()=>appState.players.filter(p=>p.teamId===getCurrentTeam());
+const getTeamSchedules=()=>appState.schedules.filter(s=>s.teamId===getCurrentTeam());
+
+// ============================================
+// 💾 STORAGE & SYNC (IMPROVED WITH BACKGROUND SYNC)
+// ============================================
+const saveState=()=>{
+  appState.sync.lastSync=Date.now();
+  appState.sync.version++;
+  
+  localStorage.setItem('sportclub:state',JSON.stringify(appState));
+  
+  if(db && appState.sync.syncCode && appState.settings.autoSyncEnabled){
+    if(navigator.onLine){
+      try{
+        updateSyncStatus('syncing','🔄 Syncing');
+        db.ref(`sync/${appState.sync.syncCode}`).set(appState).then(()=>{
+          updateSyncStatus('online','✅ Synced');
+          $("#lastSyncTime").textContent=formatTime(Date.now());
+          appState.sync.pendingSync = [];
+        }).catch(e=>{
+          console.error('Sync error:',e);
+          queueBackgroundSync();
+        });
+      }catch(e){
+        console.error('Firebase save error:',e);
+        queueBackgroundSync();
+      }
+    } else {
+      queueBackgroundSync();
+    }
+  }
+};
+
+const saveStateDebounced=()=>{
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(saveState,500);
+};
+
+const queueBackgroundSync=()=>{
+  if('serviceWorker' in navigator && 'sync' in registration){
+    navigator.serviceWorker.ready.then(reg=>{
+      return reg.sync.register('sync-data');
+    }).then(()=>{
+      updateSyncStatus('offline','⏳ Queued');
+      appState.sync.pendingSync.push(Date.now());
+      localStorage.setItem('sportclub:state',JSON.stringify(appState));
+    }).catch(e=>{
+      console.warn('Background sync not available:',e);
+      updateSyncStatus('offline','❌ Offline');
+    });
+  } else {
+    updateSyncStatus('offline','❌ Offline');
+  }
+};
+
+const loadState=()=>{
+  try{
+    const result=localStorage.getItem('sportclub:state');
+    if(result){
+      const parsed=JSON.parse(result);
+      appState={...defaultState,...parsed};
+      Object.keys(defaultState).forEach(k=>{
+        if(typeof defaultState[k]==="object"&&!Array.isArray(defaultState[k])){
+          appState[k]={...defaultState[k],...(parsed[k]||{})}
+        }
+      })
+    }
+    if(!appState.sync.deviceId){
+      appState.sync.deviceId=uid();
+      saveState();
+    }
+  }catch(e){
+    console.error('Load error:',e)
+  }
+  applyTheme();
+};
+
+const startRealtimeSync=()=>{
+  if(!db || !appState.sync.syncCode)return;
+  
+  syncRef=db.ref(`sync/${appState.sync.syncCode}`);
+  
+  syncRef.on('value',(snapshot)=>{
+    const remoteData=snapshot.val();
+    
+    if(!remoteData){
+      if(!isInitialLoad){
+        db.ref(`sync/${appState.sync.syncCode}`).set(appState);
+      }
+      isInitialLoad=false;
+      return;
+    }
+    
+    if(remoteData.sync.deviceId===appState.sync.deviceId&&remoteData.sync.version<=appState.sync.version){
+      isInitialLoad=false;
+      return;
+    }
+    
+    if(remoteData.sync.version>appState.sync.version||isInitialLoad){
+      const myDeviceId=appState.sync.deviceId;
+      appState={...remoteData};
+      appState.sync.deviceId=myDeviceId;
+      
+      localStorage.setItem('sportclub:state',JSON.stringify(appState));
+      
+      if(!isInitialLoad){
+        renderActiveView();
+        showToast("🔄 Ενημερώθηκε από άλλη συσκευή","info");
+      }
+      
+      isInitialLoad=false;
+      updateSyncStatus('online','✅ Connected');
+      $("#lastSyncTime").textContent=formatTime(Date.now());
+    }
+  });
+  
+  db.ref('.info/connected').on('value',(snap)=>{
+    if(snap.val()===true){
+      updateSyncStatus('online','✅ Online');
+      $("#connectionStatus").textContent="🟢 Συνδεδεμένο";
+    }else{
+      updateSyncStatus('offline','⚠️ Offline');
+      $("#connectionStatus").textContent="🔴 Αποσυνδεδεμένο";
+    }
+  });
+};
+
+const stopRealtimeSync=()=>{
+  if(syncRef){
+    syncRef.off();
+    syncRef=null;
+  }
+};
+
+const updateSyncStatus=(type,text)=>{
+  const dot=$("#syncDot");
+  const status=$("#syncStatus");
+  
+  if(type==='online'){
+    dot.className='status-dot online';
+  }else if(type==='syncing'){
+    dot.className='status-dot syncing';
+  }else{
+    dot.className='status-dot';
+  }
+  
+  status.textContent=text;
+};
+
+const generateSyncCode=()=>{
+  const code=Math.random().toString(36).substring(2,6).toUpperCase()+"-"+Math.random().toString(36).substring(2,6).toUpperCase();
+  
+  stopRealtimeSync();
+  appState.sync.syncCode=code;
+  appState.sync.version=1;
+  
+  $("#syncCode").textContent=code;
+  saveState();
+  startRealtimeSync();
+  
+  showToast("✅ Νέος κωδικός: "+code,"success");
+};
+
+// ============================================
+// 🔔 PUSH NOTIFICATIONS
+// ============================================
+const requestNotificationPermission=async()=>{
+  if(!messaging){
+    showToast("❌ Notifications not supported","error");
+    return false;
+  }
+  
+  try{
+    const permission=await Notification.requestPermission();
+    
+    if(permission==='granted'){
+      const token=await messaging.getToken({
+        vapidKey:'BDVRTQaRTh8bBYW3P5uUA7GnzWRzXwPQoMm-_CAUvGJ_yUtgKkwgTxLqe9Djikqd18oYM82l7STCqtQw0rA9XLk'// Από Firebase Console
+      });
+      
+      console.log('FCM Token:',token);
+      appState.settings.fcmToken=token;
+      appState.settings.notificationsEnabled=true;
+      saveStateDebounced();
+      
+      showToast("✅ Ειδοποιήσεις ενεργοποιήθηκαν!","success");
+      checkFeatureStatus();
+      return true;
+    } else {
+      appState.settings.notificationsEnabled=false;
+      showToast("❌ Άρνηση ειδοποιήσεων","error");
+      return false;
+    }
+  }catch(e){
+    console.error('Notification error:',e);
+    showToast("❌ Σφάλμα ειδοποιήσεων","error");
+    return false;
+  }
+};
+
+const sendLocalNotification=(title,body)=>{
+  if('Notification' in window && Notification.permission==='granted'){
+    new Notification(title,{
+      body:body,
+      icon:'/icon-192.png',
+      badge:'/icon-192.png',
+      vibrate:[200,100,200]
+    });
+  }
+};
+
+const scheduleTrainingNotification=(schedule)=>{
+  // Υπολογισμός επόμενης ημέρας προπόνησης
+  const now=new Date();
+  const targetDay=parseInt(schedule.dayOfWeek);
+  const [hour,minute]=schedule.time.split(':');
+  
+  let daysUntil=(targetDay-now.getDay()+7)%7;
+  if(daysUntil===0)daysUntil=7;
+  
+  const nextDate=new Date();
+  nextDate.setDate(now.getDate()+daysUntil);
+  nextDate.setHours(parseInt(hour)-1,parseInt(minute),0,0);
+  
+  const timeUntil=nextDate.getTime()-now.getTime();
+  
+  if(timeUntil>0 && timeUntil<7*24*60*60*1000){
+    setTimeout(()=>{
+      sendLocalNotification(
+        `🏃 Προπόνηση σε 1 ώρα!`,
+        `${schedule.type} - ${schedule.location||'Γήπεδο'}`
+      );
+    },timeUntil);
+  }
+};
+
+// ============================================
+// 📤 SHARE API
+// ============================================
+const shareReport=async()=>{
+  const team=appState.teams.find(t=>t.id===getCurrentTeam());
+  const players=getTeamPlayers();
+  const active=players.filter(p=>p.active);
+  
+  const text=`📊 ${appState.settings.clubName}
+🏆 Τμήμα: ${team.name}
+👥 Παίκτες: ${active.length}/${players.length}
+📅 ${formatDate(Date.now())}`;
+  
+  if(navigator.share){
+    try{
+      await navigator.share({
+        title:`${appState.settings.clubName} - Αναφορά`,
+        text:text,
+        url:window.location.href
+      });
+      showToast("✅ Κοινοποιήθηκε!","success");
+    }catch(e){
+      if(e.name!=='AbortError'){
+        console.error('Share error:',e);
+        fallbackShare(text);
+      }
+    }
+  } else {
+    fallbackShare(text);
+  }
+};
+
+const fallbackShare=(text)=>{
+  navigator.clipboard.writeText(text).then(()=>{
+    showToast("📋 Αντιγράφηκε στο clipboard!","success");
+  }).catch(()=>{
+    showToast("❌ Σφάλμα κοινοποίησης","error");
+  });
+};
+
+// ============================================
+// 📷 CAMERA INTEGRATION
+// ============================================
+const startCamera=async()=>{
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment'},
+      audio:false
+    });
+    
+    cameraStream=stream;
+    const video=$("#cameraStream");
+    video.srcObject=stream;
+    openModal('cameraModal');
+    
+  }catch(e){
+    console.error('Camera error:',e);
+    showToast("❌ Δεν υπάρχει πρόσβαση στην κάμερα","error");
+  }
+};
+
+const stopCamera=()=>{
+  if(cameraStream){
+    cameraStream.getTracks().forEach(track=>track.stop());
+    cameraStream=null;
+  }
+};
+
+const capturePhoto=()=>{
+  const video=$("#cameraStream");
+  const canvas=$("#photoCanvas");
+  const ctx=canvas.getContext('2d');
+  
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  ctx.drawImage(video,0,0);
+  
+  currentPhotoData=canvas.toDataURL('image/jpeg',0.8);
+  
+  const preview=$("#cameraPreview");
+  preview.innerHTML=`<img src="${currentPhotoData}" alt="Photo"/>`;
+  $("#removePhotoBtn").style.display="inline-flex";
+  
+  stopCamera();
+  closeModal('cameraModal');
+  showToast("✅ Φωτογραφία λήφθηκε!","success");
+};
+
+const selectPhotoFromGallery=()=>{
+  $("#photoInput").click();
+};
+
+$("#photoInput").addEventListener('change',e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    currentPhotoData=ev.target.result;
+    const preview=$("#cameraPreview");
+    preview.innerHTML=`<img src="${currentPhotoData}" alt="Photo"/>`;
+    $("#removePhotoBtn").style.display="inline-flex";
+    showToast("✅ Φωτογραφία επιλέχθηκε!","success");
+  };
+  reader.readAsDataURL(file);
+});
+
+const removePhoto=()=>{
+  currentPhotoData=null;
+  $("#cameraPreview").innerHTML='<span style="color:var(--text-secondary);">Πάτα για φωτογραφία</span>';
+  $("#removePhotoBtn").style.display="none";
+};
+
+// ============================================
+// 📍 GEOLOCATION
+// ============================================
+const getCurrentLocation=()=>{
+  return new Promise((resolve,reject)=>{
+    if(!navigator.geolocation){
+      reject(new Error('Geolocation not supported'));
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      position=>{
+        const {latitude,longitude}=position.coords;
+        resolve({lat:latitude,lng:longitude});
+      },
+      error=>{
+        reject(error);
+      },
+      {enableHighAccuracy:true,timeout:10000,maximumAge:0}
+    );
+  });
+};
+
+const getAddressFromCoords=async(lat,lng)=>{
+  try{
+    const response=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+    const data=await response.json();
+    return data.display_name||`${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  }catch(e){
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  }
+};
+
+// ============================================
+// 🎨 UI FUNCTIONS
+// ============================================
+const showToast=(msg,type="info")=>{const toast=$("#toast");toast.textContent=msg;toast.className=`notification-toast show ${type}`;setTimeout(()=>toast.classList.remove("show"),3500)};
+const openModal=(id)=>{const m=$(`#${id}`);if(m){m.classList.add("active");document.body.style.overflow="hidden"}};
+const closeModal=(id)=>{const m=$(`#${id}`);if(m){m.classList.remove("active");document.body.style.overflow="";if(id==='cameraModal')stopCamera()}};
+const switchView=(n)=>{$$(".view").forEach(v=>v.classList.remove("active"));$$(".tab-btn").forEach(b=>b.classList.remove("active"));$(`#${n}`).classList.add("active");$(`[data-view="${n}"]`).classList.add("active");window.scrollTo(0,0);renderActiveView()};
+const applyTheme=()=>{document.body.dataset.theme=appState.settings.theme;$("#themeIcon").textContent=appState.settings.theme==="dark"?"🌙":"☀️"};
+
+// ============================================
+// 📊 RENDER FUNCTIONS
+// ============================================
+const renderActiveView=()=>{const active=$(".tab-btn.active")?.dataset.view;if(active==="dashboard")renderDashboard();if(active==="teams")renderTeams();if(active==="players")renderPlayers();if(active==="schedule")renderSchedule();if(active==="attendance")renderAttendance();if(active==="reports")renderReports();if(active==="settings")renderSettings()};
+
+const renderTeamSelector=(containerId)=>{const container=$(containerId);if(!container)return;container.innerHTML="";appState.teams.forEach(t=>{const chip=document.createElement("div");chip.className=`team-chip ${t.id===getCurrentTeam()?"active":""}`;chip.textContent=t.name;chip.style.borderColor=t.color;if(t.id===getCurrentTeam())chip.style.background=t.color;chip.addEventListener("click",()=>setCurrentTeam(t.id));container.appendChild(chip)})};
+
+const renderDashboard=()=>{renderTeamSelector("#dashboardTeamSelector");const now=new Date();$("#currentDate").textContent=now.toLocaleDateString("el-GR",{day:"2-digit",month:"2-digit"});const active=getTeamPlayers().filter(p=>p.active);$("#totalPlayers").textContent=getTeamPlayers().length;$("#activePlayers").textContent=active.length;const today=todayISO();const teamPlayerIds=getTeamPlayers().map(p=>p.id);const todayAtt=appState.attendance.filter(a=>a.date===today&&teamPlayerIds.includes(a.playerId));const todayPresent=todayAtt.filter(a=>a.attended).length;const todayRate=todayAtt.length?Math.round((todayPresent/todayAtt.length)*100):0;$("#todayAttendance").textContent=todayRate+"%";$("#todayAttendance").style.color=todayRate>=80?"var(--success)":todayRate>=50?"var(--warning)":"var(--danger)";const weekAgo=new Date();weekAgo.setDate(weekAgo.getDate()-7);const weekly=appState.attendance.filter(a=>new Date(a.date)>=weekAgo&&teamPlayerIds.includes(a.playerId));const weeklyPresent=weekly.filter(a=>a.attended).length;const weeklyRate=weekly.length?Math.round((weeklyPresent/weekly.length)*100):0;$("#weeklyAvg").textContent=weeklyRate+"%";renderUpcomingSchedule();renderWeeklyChart()};
+
+const renderUpcomingSchedule=()=>{const container=$("#upcomingSchedule");const now=new Date();const upcoming=sortBy(getTeamSchedules().map(s=>{const next=new Date();const daysUntil=(parseInt(s.dayOfWeek)-next.getDay()+7)%7;next.setDate(next.getDate()+(daysUntil||7));const[h,m]=s.time.split(":");next.setHours(parseInt(h),parseInt(m),0,0);return{...s,nextDate:next.toISOString()}}),"nextDate").slice(0,5);if(!upcoming.length){container.innerHTML='<div class="list-empty">📅 Δεν υπάρχουν προπονήσεις</div>';return}container.innerHTML=upcoming.map(s=>{const nextDate=new Date(s.nextDate);const isToday=nextDate.toDateString()===now.toDateString();return`<div class="schedule-item" style="${isToday?'border-color:var(--accent);border-width:2px;':''}"><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;${isToday?'color:var(--accent);':''}">${dayNameFull(s.dayOfWeek)} ${s.time} ${isToday?'🔥':''}</div><div style="font-size:.75rem;color:var(--text-secondary);">${s.type} • ${s.location||"-"}</div></div></div>`}).join("")};
+
+const renderWeeklyChart=()=>{const container=$("#weeklyChart");const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split("T")[0])}const teamPlayerIds=getTeamPlayers().map(p=>p.id);const data=days.map(date=>{const att=appState.attendance.filter(a=>a.date===date&&teamPlayerIds.includes(a.playerId));const present=att.filter(a=>a.attended).length;return{date,rate:att.length?Math.round((present/att.length)*100):0}});const maxRate=Math.max(...data.map(d=>d.rate),1);container.innerHTML=data.map(d=>{const height=(d.rate/maxRate)*100;return`<div class="bar" style="height:${height}%;"><div class="bar-value">${d.rate}%</div><div class="bar-label">${dayName(new Date(d.date).getDay())}</div></div>`}).join("")};
+
+const renderTeams=()=>{const container=$("#teamsContainer");container.innerHTML="";appState.teams.forEach(t=>{const playerCount=appState.players.filter(p=>p.teamId===t.id).length;const card=document.createElement("div");card.className="player-card";card.innerHTML=`<div class="player-card-header"><div class="player-avatar" style="background:${t.color};">🏆</div><div style="flex:1;"><div style="font-weight:600;">${t.name}</div><div style="font-size:.8rem;color:var(--text-secondary);">${playerCount} παίκτες${t.location?` • <span class="location-badge">📍 ${t.location}</span>`:''}</div></div></div><div style="display:flex;gap:.5rem;"><button class="btn btn-primary" data-edit-team="${t.id}" style="flex:1;">✏️</button><button class="btn btn-danger" data-del-team="${t.id}" ${t.id==="default"?"disabled":""}>🗑️</button></div>`;container.appendChild(card)})};
+
+const renderPlayers=()=>{renderTeamSelector("#playerTeamSelector");const container=$("#playersContainer");let players=getTeamPlayers();if(playerFilters.search){const term=playerFilters.search.toLowerCase();players=players.filter(p=>p.name.toLowerCase().includes(term))}if(playerFilters.position)players=players.filter(p=>p.position===playerFilters.position);if(playerFilters.status){const active=playerFilters.status==="active";players=players.filter(p=>p.active===active)}if(!players.length){container.innerHTML='<div class="list-empty">👥 Δεν βρέθηκαν</div>';return}container.innerHTML="";players.forEach(p=>{const rate=getPlayerAttendanceRate(p.id);const card=document.createElement("div");card.className="player-card";card.innerHTML=`<div class="player-card-header"><div class="player-avatar">${p.photo?`<img src="${p.photo}" alt="${p.name}"/>`:getInitials(p.name)}</div><div style="flex:1;"><div style="font-weight:600;">${p.name}</div><div style="font-size:.8rem;color:var(--text-secondary);">${p.position}</div></div><span class="badge ${p.active?"active":"inactive"}">${p.active?"ON":"OFF"}</span></div><div class="player-stats"><div class="player-stat"><div class="player-stat-value">${rate}%</div><div class="player-stat-label">Παρουσία</div></div></div><div style="display:flex;gap:.5rem;margin-top:.75rem;"><button class="btn btn-primary" data-edit-player="${p.id}" style="flex:1;">✏️</button><button class="btn btn-danger" data-del-player="${p.id}">🗑️</button></div>`;container.appendChild(card)})};
+
+const updateTeamSelects=()=>{["playerTeam","scheduleTeam"].forEach(id=>{const sel=$(`#${id}`);if(!sel)return;sel.innerHTML=appState.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join("");sel.value=getCurrentTeam()})};
+
+const renderSchedule=()=>{renderTeamSelector("#scheduleTeamSelector");renderCalendarView();renderScheduleList()};
+
+const renderCalendarView=()=>{const container=$("#calendarView");const today=new Date();container.innerHTML="";for(let i=0;i<7;i++){const date=new Date(today);date.setDate(today.getDate()-today.getDay()+i);const dayNum=date.getDay();const trainings=getTeamSchedules().filter(s=>parseInt(s.dayOfWeek)===dayNum);const isToday=date.toDateString()===today.toDateString();const div=document.createElement("div");div.className=`calendar-day ${trainings.length>0?'has-training':''} ${isToday?'today':''}`;div.innerHTML=`<div style="font-weight:600;">${dayName(dayNum)}</div><div style="font-size:1.1rem;">${date.getDate()}</div>`;container.appendChild(div)}};
+
+const renderScheduleList=()=>{const list=$("#scheduleList");const schedules=sortBy(getTeamSchedules(),"dayOfWeek");if(!schedules.length){list.innerHTML='<div class="list-empty">📅 Προσθέστε</div>';return}list.innerHTML=schedules.map(s=>`<div class="schedule-item"><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">${dayNameFull(s.dayOfWeek)} ${s.time} ${s.notifyEnabled?'🔔':''}</div><div style="font-size:.75rem;color:var(--text-secondary);">${s.type}</div></div><div style="display:flex;gap:.25rem;"><button class="btn" data-edit-schedule="${s.id}">✏️</button><button class="btn btn-danger" data-del-schedule="${s.id}">🗑️</button></div></div>`).join("")};
+
+const renderAttendance=()=>{renderTeamSelector("#attendanceTeamSelector");const dateInput=$("#attendanceDate");if(!dateInput.value)dateInput.value=todayISO();renderAttendanceList()};
+
+const renderAttendanceList=()=>{const date=$("#attendanceDate").value;const container=$("#attendanceContainer");const players=sortBy(getTeamPlayers().filter(p=>p.active),"name");const teamPlayerIds=players.map(p=>p.id);const todayAtt=appState.attendance.filter(a=>a.date===date&&teamPlayerIds.includes(a.playerId));const present=todayAtt.filter(a=>a.attended).length;const total=players.length;const rate=total?Math.round((present/total)*100):0;$("#quickStats").innerHTML=`<strong>${present}/${total}</strong> παρόντες`;$("#attendanceProgress").style.width=rate+"%";if(!players.length){container.innerHTML='<div class="list-empty">👥 Δεν υπάρχουν</div>';return}container.innerHTML="";players.forEach(p=>{const rec=appState.attendance.find(a=>a.playerId===p.id&&a.date===date);const card=document.createElement("div");card.className="player-card";card.innerHTML=`<div class="player-card-header"><div class="player-avatar">${p.photo?`<img src="${p.photo}" alt="${p.name}"/>`:getInitials(p.name)}</div><div style="flex:1;"><div style="font-weight:600;">${p.name}</div><div style="font-size:.8rem;color:var(--text-secondary);">${p.position}</div></div><span class="attendance-mark ${rec?.attended?"present":rec?"absent":""}" data-mark="${p.id}">${rec?.attended?"✓":rec?"✗":""}</span></div>`;container.appendChild(card)})};
+
+const renderReports=()=>{renderTeamSelector("#reportTeamSelector");const period=$("#reportPeriod").value;let startDate=new Date();if(period==="week")startDate.setDate(startDate.getDate()-7);else if(period==="month")startDate.setMonth(startDate.getMonth()-1);else if(period==="quarter")startDate.setMonth(startDate.getMonth()-3);else startDate.setFullYear(startDate.getFullYear()-1);const teamPlayerIds=getTeamPlayers().map(p=>p.id);const records=appState.attendance.filter(a=>new Date(a.date)>=startDate&&teamPlayerIds.includes(a.playerId));const present=records.filter(a=>a.attended).length;const avgRate=records.length?Math.round((present/records.length)*100):0;$("#reportTotalSessions").textContent=new Set(records.map(r=>r.date)).size;$("#reportAvgAttendance").textContent=avgRate+"%";const playerStats={};records.forEach(r=>{if(!playerStats[r.playerId])playerStats[r.playerId]={total:0,present:0};playerStats[r.playerId].total++;if(r.attended)playerStats[r.playerId].present++});let topPlayer=null;let topRate=0;Object.keys(playerStats).forEach(pid=>{const rate=(playerStats[pid].present/playerStats[pid].total)*100;if(rate>topRate){topRate=rate;topPlayer=appState.players.find(p=>p.id===pid)}});$("#reportTopPlayer").textContent=topPlayer?topPlayer.name.split(" ")[0]:"-";renderPlayerAttendanceChart(playerStats)};
+
+const renderPlayerAttendanceChart=(stats)=>{const container=$("#playerAttendanceChart");const data=Object.keys(stats).map(pid=>{const player=appState.players.find(p=>p.id===pid);if(!player)return null;const rate=Math.round((stats[pid].present/stats[pid].total)*100);return{player,rate}}).filter(Boolean).sort((a,b)=>b.rate-a.rate).slice(0,10);if(!data.length){container.innerHTML='<div class="list-empty">📊 Δεν υπάρχουν</div>';return}const maxRate=Math.max(...data.map(d=>d.rate),1);container.innerHTML=data.map(d=>{const height=(d.rate/maxRate)*100;return`<div class="bar" style="height:${height}%;"><div class="bar-value">${d.rate}%</div><div class="bar-label">${d.player.name.split(" ")[0]}</div></div>`}).join("")};
+
+const renderSettings=()=>{$("#clubName").value=appState.settings.clubName;$("#coachName").value=appState.settings.coachName;$("#autoSyncEnabled").checked=appState.settings.autoSyncEnabled;$("#notificationsEnabled").checked=appState.settings.notificationsEnabled;$("#backgroundSyncEnabled").checked=appState.settings.backgroundSyncEnabled;$("#brandName").textContent=appState.settings.clubName;$("#syncCode").textContent=appState.sync.syncCode||"XXXX-XXXX";$("#lastSyncTime").textContent=appState.sync.lastSync?formatTime(appState.sync.lastSync):"-";$("#connectionStatus").textContent=db?"🟢 Συνδεδεμένο":"🔴 Αποσυνδεδεμένο";checkFeatureStatus()};
+
+const checkFeatureStatus=()=>{
+  if(window.matchMedia('(display-mode: standalone)').matches){
+    $("#pwaStatus").innerHTML='<span style="color:var(--success)">✅ Installed</span>';
+  }else{
+    $("#pwaStatus").innerHTML='<span style="color:var(--warning)">⚠️ Browser</span>';
+  }
+  
+  if('caches' in window){
+    caches.keys().then(names=>{
+      $("#cacheStatus").innerHTML=names.length>0?'<span style="color:var(--success)">✅ Active</span>':'<span style="color:var(--text-secondary)">⏳ Loading</span>';
+    });
+  }
+  
+  $("#pushStatus").innerHTML=Notification.permission==='granted'?'<span style="color:var(--success)">✅ Enabled</span>':'<span style="color:var(--text-secondary)">⏹️ Disabled</span>';
+  
+  $("#bgSyncStatus").innerHTML=('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype)?'<span style="color:var(--success)">✅ Supported</span>':'<span style="color:var(--danger)">❌ Not supported</span>';
+  
+  $("#cameraStatus").innerHTML=('mediaDevices' in navigator)?'<span style="color:var(--success)">✅ Available</span>':'<span style="color:var(--danger)">❌ Not available</span>';
+  
+  $("#geoStatus").innerHTML=('geolocation' in navigator)?'<span style="color:var(--success)">✅ Available</span>':'<span style="color:var(--danger)">❌ Not available</span>';
+};
+
+// ============================================
+// 🎯 EVENT LISTENERS
+// ============================================
+$("#themeToggle").addEventListener("click",()=>{appState.settings.theme=appState.settings.theme==="dark"?"light":"dark";applyTheme();saveStateDebounced()});
+$$(".tab-btn").forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
+$$("[data-close]").forEach(btn=>btn.addEventListener("click",()=>closeModal(btn.dataset.close)));
+$$(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)closeModal(m.id)}));
+
+$("#shareReportBtn").addEventListener("click",shareReport);
+
+$("#addTeamBtn").addEventListener("click",()=>{editingTeamId=null;$("#teamForm").reset();$("#teamLocation").value="";openModal("teamModal")});
+$("#teamForm").addEventListener("submit",e=>{e.preventDefault();const payload={name:$("#teamName").value.trim(),description:$("#teamDesc").value.trim(),color:$("#teamColor").value,location:$("#teamLocation").value.trim()||null};if(!payload.name)return showToast("❌ Όνομα","error");if(editingTeamId){const idx=appState.teams.findIndex(t=>t.id===editingTeamId);appState.teams[idx]={...appState.teams[idx],...payload}}else{appState.teams.push({id:uid(),...payload})}saveStateDebounced();renderTeams();closeModal("teamModal");showToast("✅ OK","success")});
+
+$("#getLocationBtn").addEventListener("click",async()=>{
+  try{
+    showToast("📍 Εντοπισμός...","info");
+    const location=await getCurrentLocation();
+    const address=await getAddressFromCoords(location.lat,location.lng);
+    $("#teamLocation").value=address;
+    showToast("✅ Τοποθεσία εντοπίστηκε!","success");
+  }catch(e){
+    console.error('Location error:',e);
+    showToast("❌ Δεν ήταν δυνατός ο εντοπισμός","error");
+  }
+});
+
+$("#addPlayerBtn").addEventListener("click",()=>{editingPlayerId=null;$("#playerForm").reset();currentPhotoData=null;$("#cameraPreview").innerHTML='<span style="color:var(--text-secondary);">Πάτα για φωτογραφία</span>';$("#removePhotoBtn").style.display="none";updateTeamSelects();openModal("playerModal")});
+
+$("#takeCameraBtn").addEventListener("click",startCamera);
+$("#takePhotoBtn").addEventListener("click",selectPhotoFromGallery);
+$("#capturePhotoBtn").addEventListener("click",capturePhoto);
+$("#removePhotoBtn").addEventListener("click",removePhoto);
+
+$("#playerForm").addEventListener("submit",e=>{e.preventDefault();const payload={name:$("#playerName").value.trim(),position:$("#playerPosition").value,teamId:$("#playerTeam").value,active:$("#playerActive").checked,photo:currentPhotoData||null,registrationDate:todayISO()};if(!payload.name||!payload.position)return showToast("❌ Συμπλήρωσε","error");if(editingPlayerId){const idx=appState.players.findIndex(p=>p.id===editingPlayerId);appState.players[idx]={...appState.players[idx],...payload}}else{appState.players.push({id:uid(),...payload})}saveStateDebounced();renderPlayers();closeModal("playerModal");showToast("✅ OK","success")});
+
+$("#addScheduleBtn").addEventListener("click",()=>{editingScheduleId=null;$("#scheduleForm").reset();updateTeamSelects();openModal("scheduleModal")});
+$("#scheduleForm").addEventListener("submit",e=>{e.preventDefault();const payload={dayOfWeek:parseInt($("#scheduleDay").value),time:$("#scheduleTime").value,type:$("#scheduleType").value.trim(),location:$("#scheduleLocation").value.trim(),teamId:$("#scheduleTeam").value,notifyEnabled:$("#notifySchedule").checked};if(!payload.type)return showToast("❌ Τύπος","error");if(editingScheduleId){const idx=appState.schedules.findIndex(s=>s.id===editingScheduleId);appState.schedules[idx]={...appState.schedules[idx],...payload}}else{const newSchedule={id:uid(),...payload};appState.schedules.push(newSchedule);if(payload.notifyEnabled&&appState.settings.notificationsEnabled){scheduleTrainingNotification(newSchedule)}}saveStateDebounced();renderSchedule();closeModal("scheduleModal");showToast("✅ OK","success")});
+
+$("#markAttendanceBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;const players=getTeamPlayers().filter(p=>p.active);const list=$("#attendancePlayersList");list.innerHTML="";players.forEach(p=>{const rec=appState.attendance.find(a=>a.playerId===p.id&&a.date===date);const div=document.createElement("div");div.style.cssText="display:flex;align-items:center;gap:.5rem;padding:.75rem;background:var(--bg-secondary);border-radius:.5rem;margin-bottom:.5rem;";div.innerHTML=`<label style="flex:1;cursor:pointer;"><input type="checkbox" data-playerid="${p.id}" ${rec?.attended?"checked":""}> ${p.name}</label>`;list.appendChild(div)});openModal("attendanceModal")});
+
+$("#attendanceForm").addEventListener("submit",e=>{e.preventDefault();const date=$("#attendanceDate").value;$$('#attendancePlayersList input[type="checkbox"]').forEach(cb=>{const playerId=cb.dataset.playerid;const attended=cb.checked;const existIdx=appState.attendance.findIndex(a=>a.playerId===playerId&&a.date===date);const payload={playerId,date,attended,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveStateDebounced();closeModal("attendanceModal");renderAttendanceList();renderDashboard();showToast("✅ Αποθηκεύτηκε","success")});
+
+$("#attendanceContainer").addEventListener("click",e=>{const mark=e.target.closest("[data-mark]");if(!mark)return;const playerId=mark.dataset.mark;const date=$("#attendanceDate").value;const rec=appState.attendance.find(a=>a.playerId===playerId&&a.date===date);const attended=!rec?.attended;const payload={playerId,date,attended,timestamp:Date.now()};if(rec){const idx=appState.attendance.findIndex(a=>a.id===rec.id);appState.attendance[idx]={...appState.attendance[idx],...payload}}else{appState.attendance.push({id:uid(),...payload})}saveStateDebounced();renderAttendanceList();renderDashboard()});
+
+$("#allPresentBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;getTeamPlayers().filter(p=>p.active).forEach(p=>{const existIdx=appState.attendance.findIndex(a=>a.playerId===p.id&&a.date===date);const payload={playerId:p.id,date,attended:true,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveStateDebounced();renderAttendanceList();renderDashboard()});
+
+$("#allAbsentBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;getTeamPlayers().filter(p=>p.active).forEach(p=>{const existIdx=appState.attendance.findIndex(a=>a.playerId===p.id&&a.date===date);const payload={playerId:p.id,date,attended:false,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveStateDebounced();renderAttendanceList();renderDashboard()});
+
+$("#clubName").addEventListener("change",e=>{appState.settings.clubName=e.target.value.trim();$("#brandName").textContent=e.target.value.trim();saveStateDebounced()});
+$("#coachName").addEventListener("change",e=>{appState.settings.coachName=e.target.value.trim();saveStateDebounced()});
+$("#autoSyncEnabled").addEventListener("change",e=>{appState.settings.autoSyncEnabled=e.target.checked;saveStateDebounced();if(e.target.checked)startRealtimeSync();else stopRealtimeSync()});
+$("#notificationsEnabled").addEventListener("change",async e=>{
+  if(e.target.checked){
+    const granted=await requestNotificationPermission();
+    if(!granted){
+      e.target.checked=false;
+    }
+  }else{
+    appState.settings.notificationsEnabled=false;
+    saveStateDebounced();
+  }
+});
+$("#backgroundSyncEnabled").addEventListener("change",e=>{appState.settings.backgroundSyncEnabled=e.target.checked;saveStateDebounced()});
+
+$("#generateSyncCodeBtn").addEventListener("click",generateSyncCode);
+
+$("#enterSyncCodeBtn").addEventListener("click",()=>{$("#syncCodeInput").value="";openModal("syncCodeModal")});
+
+$("#syncCodeInput").addEventListener("input",e=>{let val=e.target.value.replace(/[^A-Z0-9]/gi,'').toUpperCase();if(val.length>4&&!val.includes('-'))val=val.substring(0,4)+"-"+val.substring(4);e.target.value=val.substring(0,9)});
+
+$("#syncCodeForm").addEventListener("submit",e=>{e.preventDefault();const input=$("#syncCodeInput").value.trim().replace(/-/g,'');if(input.length!==8)return showToast("❌ 8 ψηφία","error");const code=input.substring(0,4)+"-"+input.substring(4);stopRealtimeSync();appState.sync.syncCode=code;$("#syncCode").textContent=code;saveStateDebounced();isInitialLoad=true;startRealtimeSync();closeModal("syncCodeModal");showToast("✅ Συγχρονισμός ξεκίνησε","success")});
+
+$("#backupBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(appState,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`backup-${todayISO()}.json`;a.click();URL.revokeObjectURL(url);showToast("✅ Backup","success")});
+
+$("#restoreBtn").addEventListener("click",()=>$("#restoreFile").click());
+$("#restoreFile").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const parsed=JSON.parse(ev.target.result);appState=parsed;saveStateDebounced();renderActiveView();showToast("✅ OK","success")}catch(err){showToast("❌ Error","error")}};reader.readAsText(file)});
+
+$("#clearDataBtn").addEventListener("click",()=>{if(!confirm("⚠️ Διαγραφή ΟΛΩΝ;"))return;localStorage.clear();location.reload()});
+
+$("#searchPlayers").addEventListener("input",e=>{playerFilters.search=e.target.value;renderPlayers()});
+$("#filterPosition").addEventListener("change",e=>{playerFilters.position=e.target.value;renderPlayers()});
+$("#filterStatus").addEventListener("change",e=>{playerFilters.status=e.target.value;renderPlayers()});
+$("#reportPeriod").addEventListener("change",renderReports);
+$("#generateReportBtn").addEventListener("click",renderReports);
+$("#attendanceDate").addEventListener("change",renderAttendanceList);
+
+$("#teamsContainer").addEventListener("click",e=>{const editBtn=e.target.closest("[data-edit-team]");const delBtn=e.target.closest("[data-del-team]");if(editBtn){const t=appState.teams.find(x=>x.id===editBtn.dataset.editTeam);if(t){editingTeamId=t.id;$("#teamName").value=t.name;$("#teamDesc").value=t.description||"";$("#teamColor").value=t.color;$("#teamLocation").value=t.location||"";openModal("teamModal")}}if(delBtn&&!delBtn.disabled){if(!confirm("⚠️ Διαγραφή;"))return;const id=delBtn.dataset.delTeam;appState.teams=appState.teams.filter(t=>t.id!==id);appState.players=appState.players.filter(p=>p.teamId!==id);saveStateDebounced();renderTeams()}});
+
+$("#playersContainer").addEventListener("click",e=>{const editBtn=e.target.closest("[data-edit-player]");const delBtn=e.target.closest("[data-del-player]");if(editBtn){const p=appState.players.find(x=>x.id===editBtn.dataset.editPlayer);if(p){editingPlayerId=p.id;updateTeamSelects();$("#playerTeam").value=p.teamId;$("#playerName").value=p.name;$("#playerPosition").value=p.position;$("#playerActive").checked=p.active;currentPhotoData=p.photo||null;if(currentPhotoData){$("#cameraPreview").innerHTML=`<img src="${currentPhotoData}" alt="Photo"/>`;$("#removePhotoBtn").style.display="inline-flex"}else{$("#cameraPreview").innerHTML='<span style="color:var(--text-secondary);">Πάτα για φωτογραφία</span>';$("#removePhotoBtn").style.display="none"}openModal("playerModal")}}if(delBtn){if(!confirm("⚠️ Διαγραφή;"))return;appState.players=appState.players.filter(p=>p.id!==delBtn.dataset.delPlayer);appState.attendance=appState.attendance.filter(a=>a.playerId!==delBtn.dataset.delPlayer);saveStateDebounced();renderPlayers()}});
+
+$("#scheduleList").addEventListener("click",e=>{const editBtn=e.target.closest("[data-edit-schedule]");const delBtn=e.target.closest("[data-del-schedule]");if(editBtn){const s=appState.schedules.find(x=>x.id===editBtn.dataset.editSchedule);if(s){editingScheduleId=s.id;updateTeamSelects();$("#scheduleTeam").value=s.teamId;$("#scheduleDay").value=s.dayOfWeek;$("#scheduleTime").value=s.time;$("#scheduleType").value=s.type;$("#scheduleLocation").value=s.location||"";$("#notifySchedule").checked=s.notifyEnabled||false;openModal("scheduleModal")}}if(delBtn){if(!confirm("⚠️ Διαγραφή;"))return;appState.schedules=appState.schedules.filter(s=>s.id!==delBtn.dataset.delSchedule);saveStateDebounced();renderSchedule()}});
+
+// ============================================
+// 📱 PWA INSTALLATION
+// ============================================
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  $("#installPrompt").classList.add("show");
+});
+
+$("#installBtn").addEventListener("click", async () => {
+  if (!deferredPrompt) return;
+  
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  
+  if (outcome === 'accepted') {
+    showToast("✅ Εγκατάσταση ολοκληρώθηκε!","success");
+  }
+  
+  deferredPrompt = null;
+  $("#installPrompt").classList.remove("show");
+});
+
+window.addEventListener('appinstalled', () => {
+  showToast("🎉 Η εφαρμογή εγκαταστάθηκε!","success");
+  $("#installPrompt").classList.remove("show");
+});
+
+// ============================================
+// 🚀 SERVICE WORKER REGISTRATION
+// ============================================
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/service-worker.js")
+    .then(reg => {
+      console.log("✅ Service Worker registered");
+      
+      // Background Sync Event
+      if('sync' in reg){
+        navigator.serviceWorker.addEventListener('message',event=>{
+          if(event.data.type==='SYNC_COMPLETE'){
+            showToast("🔄 Συγχρονισμός ολοκληρώθηκε!","success");
+            loadState();
+            renderActiveView();
+          }
+        });
+      }
+      
+      // Update notification
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            if(confirm("🔄 Νέα έκδοση διαθέσιμη! Επαναφόρτωση;")){
+              window.location.reload();
+            }
+          }
+        });
+      });
+    })
+    .catch(err => console.error("❌ SW registration failed:", err));
+  
+  // Register FCM Service Worker
+  if(messaging){
+    navigator.serviceWorker.register("/firebase-messaging-sw.js")
+      .then(reg=>console.log("✅ FCM SW registered"))
+      .catch(err=>console.error("❌ FCM SW error:",err));
+  }
+}
+
+// ============================================
+// 📡 ONLINE/OFFLINE EVENTS
+// ============================================
+window.addEventListener('online',()=>{
+  showToast("✅ Σύνδεση αποκαταστάθηκε!","success");
+  if(appState.settings.autoSyncEnabled){
+    saveState();
+  }
+});
+
+window.addEventListener('offline',()=>{
+  showToast("⚠️ Offline mode - οι αλλαγές θα συγχρονιστούν αργότερα","info");
+});
+
+// ============================================
+// 🚀 INITIALIZATION
+// ============================================
+window.addEventListener("DOMContentLoaded",()=>{
+  loadState();
+  renderActiveView();
+  
+  if(appState.sync.syncCode){
+    startRealtimeSync();
+  }
+  
+  // Firebase Messaging foreground handler
+  if(messaging){
+    messaging.onMessage((payload)=>{
+      console.log('Message received:',payload);
+      showToast(`🔔 ${payload.notification.title}`,payload.notification.body,"info");
+      
+      if(Notification.permission==='granted'){
+        new Notification(payload.notification.title,{
+          body:payload.notification.body,
+          icon:'/icon-192.png'
+        });
+      }
+    });
+  }
+  
+  setInterval(()=>{$("#timestamp").textContent=new Date().toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"})},1000);
+  
+  console.log("✅ App initialized - COMPLETE EDITION");
+  console.log("🔑 Sync Code:",appState.sync.syncCode||"none");
+  console.log("🔔 Notifications:",Notification.permission);
+  console.log("📷 Camera:",('mediaDevices' in navigator)?'✅':'❌');
+  console.log("📍 Geolocation:",('geolocation' in navigator)?'✅':'❌');
+  
+  if(!appState.sync.syncCode){
+    setTimeout(()=>showToast("👋 Δημιούργησε Sync Code για αυτόματο συγχρονισμό!","info"),2000);
+  }
+});
+</script>
+</body>
+</html>
