@@ -112,12 +112,10 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 .calendar-day.today{border:2px solid var(--info)}
 .sync-code{font-size:1.25rem;font-weight:800;letter-spacing:.2rem;color:var(--accent);padding:1rem;background:var(--bg-secondary);border:2px solid var(--accent);border-radius:.5rem;text-align:center;margin:1rem 0;word-break:break-all;user-select:all;font-family:monospace}
 .info-box{background:var(--info);color:#000;padding:1rem;border-radius:.5rem;margin-bottom:1rem;font-size:.8rem}
+.debug-box{background:var(--warning);color:#000;padding:.75rem;border-radius:.5rem;margin-bottom:1rem;font-size:.75rem;font-family:monospace}
 .install-prompt{background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;padding:1rem;border-radius:.5rem;margin-bottom:1rem;display:none;align-items:center;gap:.75rem}
 .install-prompt.show{display:flex}
 .install-prompt button{background:#fff;color:var(--accent);border:none;padding:.5rem 1rem;border-radius:.5rem;font-weight:600;cursor:pointer}
-.camera-preview{width:100%;max-width:300px;height:300px;background:var(--bg-secondary);border:2px dashed var(--border);border-radius:.5rem;display:flex;align-items:center;justify-content:center;margin:1rem auto;overflow:hidden;position:relative}
-.camera-preview img,.camera-preview video{width:100%;height:100%;object-fit:cover}
-.location-badge{display:inline-flex;align-items:center;gap:.25rem;padding:.25rem .5rem;background:var(--info);color:#fff;border-radius:.5rem;font-size:.7rem;font-weight:600}
 @media(max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr)}.settings-grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -168,6 +166,16 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value" id="weeklyAvg">0%</div><div class="stat-label">Εβδομάδα</div></div>
 </div>
 </div>
+
+<!-- DEBUG INFO -->
+<div class="debug-box" id="debugBox" style="display:none;">
+<strong>🐛 DEBUG INFO:</strong><br>
+Total Players: <span id="debugTotalPlayers">0</span><br>
+Current Team: <span id="debugCurrentTeam">-</span><br>
+Team Players: <span id="debugTeamPlayers">0</span><br>
+Teams: <span id="debugTeams">0</span>
+</div>
+
 <div class="card"><h2 class="card-title">📅 Επόμενες Προπονήσεις</h2><div id="upcomingSchedule"></div></div>
 <div class="card"><h2 class="card-title">📊 Εβδομαδιαία Παρουσία</h2><div class="chart-container"><div class="bar-chart" id="weeklyChart"></div></div></div>
 </section>
@@ -249,6 +257,7 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 <div class="form-group"><label>Προπονητής</label><input type="text" id="coachName"/></div>
 </div>
 <div class="toggle-switch"><input type="checkbox" id="autoSyncEnabled" checked/><label>Αυτόματος Συγχρονισμός</label></div>
+<div class="toggle-switch"><input type="checkbox" id="debugMode"/><label>🐛 Debug Mode</label></div>
 </div>
 
 <div class="card">
@@ -387,7 +396,7 @@ try {
 // ============================================
 // 💾 STATE
 // ============================================
-const defaultState={teams:[{id:"default",name:"Κύρια Ομάδα",description:"",color:"#14a34b"}],players:[],schedules:[],attendance:[],settings:{clubName:"Αθλητικό Σωματείο",coachName:"",theme:"dark",currentTeam:"default",autoSyncEnabled:true},sync:{lastSync:0,syncCode:"",version:1,deviceId:""}};
+const defaultState={teams:[{id:"default",name:"Κύρια Ομάδα",description:"",color:"#14a34b"}],players:[],schedules:[],attendance:[],settings:{clubName:"Αθλητικό Σωματείο",coachName:"",theme:"dark",currentTeam:"default",autoSyncEnabled:true,debugMode:false},sync:{lastSync:0,syncCode:"",version:1,deviceId:""}};
 let appState=JSON.parse(JSON.stringify(defaultState));
 let editingPlayerId=null;
 let editingScheduleId=null;
@@ -410,18 +419,44 @@ const sortBy=(a,k,d="asc")=>[...a].sort((x,y)=>{let va=x[k],vb=y[k];if(typeof va
 const getInitials=(n)=>{const p=n.trim().split(/\s+/);if(p.length===1)return p[0].substring(0,2).toUpperCase();return(p[0][0]+p[p.length-1][0]).toUpperCase()};
 const getPlayerAttendanceRate=(id)=>{const r=appState.attendance.filter(a=>a.playerId===id);if(!r.length)return 0;const p=r.filter(a=>a.attended).length;return Math.round((p/r.length)*100)};
 const getCurrentTeam=()=>appState.settings.currentTeam||"default";
-const setCurrentTeam=(id)=>{appState.settings.currentTeam=id;saveStateDebounced();renderActiveView()};
-const getTeamPlayers=()=>appState.players.filter(p=>p.teamId===getCurrentTeam());
+const setCurrentTeam=(id)=>{appState.settings.currentTeam=id;saveStateDebounced();updateDebugInfo();renderAllViews()};
+const getTeamPlayers=()=>{
+  const currentTeamId=getCurrentTeam();
+  const players=appState.players.filter(p=>p.teamId===currentTeamId);
+  console.log(`🔍 getTeamPlayers: teamId=${currentTeamId}, found=${players.length}`);
+  return players;
+};
 const getTeamSchedules=()=>appState.schedules.filter(s=>s.teamId===getCurrentTeam());
 
 // ============================================
-// 💾 STORAGE & SYNC (FIXED)
+// 🐛 DEBUG MODE
+// ============================================
+const updateDebugInfo=()=>{
+  if(!appState.settings.debugMode)return;
+  
+  $("#debugBox").style.display="block";
+  $("#debugTotalPlayers").textContent=appState.players.length;
+  $("#debugCurrentTeam").textContent=getCurrentTeam();
+  $("#debugTeamPlayers").textContent=getTeamPlayers().length;
+  $("#debugTeams").textContent=appState.teams.length;
+  
+  console.log("🐛 DEBUG INFO:", {
+    totalPlayers: appState.players.length,
+    currentTeam: getCurrentTeam(),
+    teamPlayers: getTeamPlayers().length,
+    allPlayers: appState.players.map(p=>({id:p.id,name:p.name,teamId:p.teamId}))
+  });
+};
+
+// ============================================
+// 💾 STORAGE & SYNC
 // ============================================
 const saveState=()=>{
   appState.sync.lastSync=Date.now();
   appState.sync.version++;
   
   localStorage.setItem('sportclub:state',JSON.stringify(appState));
+  console.log("💾 State saved:", {players: appState.players.length, teams: appState.teams.length});
   
   if(db && appState.sync.syncCode && appState.settings.autoSyncEnabled){
     try{
@@ -452,7 +487,8 @@ const loadState=()=>{
         if(typeof defaultState[k]==="object"&&!Array.isArray(defaultState[k])){
           appState[k]={...defaultState[k],...(parsed[k]||{})}
         }
-      })
+      });
+      console.log("📂 State loaded:", {players: appState.players.length, teams: appState.teams.length});
     }
     if(!appState.sync.deviceId){
       appState.sync.deviceId=uid();
@@ -493,7 +529,7 @@ const startRealtimeSync=()=>{
       localStorage.setItem('sportclub:state',JSON.stringify(appState));
       
       if(!isInitialLoad){
-        renderActiveView();
+        renderAllViews();
         showToast("🔄 Ενημερώθηκε από άλλη συσκευή","info");
       }
       
@@ -562,17 +598,83 @@ const applyTheme=()=>{document.body.dataset.theme=appState.settings.theme;$("#th
 // ============================================
 // 📊 RENDER FUNCTIONS (FIXED)
 // ============================================
-const renderActiveView=()=>{const active=$(".tab-btn.active")?.dataset.view;if(active==="dashboard")renderDashboard();if(active==="teams")renderTeams();if(active==="players")renderPlayers();if(active==="schedule")renderSchedule();if(active==="attendance")renderAttendance();if(active==="reports")renderReports();if(active==="settings")renderSettings()};
+const renderAllViews=()=>{
+  renderDashboard();
+  renderTeams();
+  renderPlayers();
+  renderSchedule();
+  renderAttendance();
+  renderReports();
+  updateDebugInfo();
+};
 
-const renderTeamSelector=(containerId)=>{const container=$(containerId);if(!container)return;container.innerHTML="";appState.teams.forEach(t=>{const chip=document.createElement("div");chip.className=`team-chip ${t.id===getCurrentTeam()?"active":""}`;chip.textContent=t.name;chip.style.borderColor=t.color;if(t.id===getCurrentTeam())chip.style.background=t.color;chip.addEventListener("click",()=>setCurrentTeam(t.id));container.appendChild(chip)})};
+const renderActiveView=()=>{
+  const active=$(".tab-btn.active")?.dataset.view;
+  if(active==="dashboard")renderDashboard();
+  if(active==="teams")renderTeams();
+  if(active==="players")renderPlayers();
+  if(active==="schedule")renderSchedule();
+  if(active==="attendance")renderAttendance();
+  if(active==="reports")renderReports();
+  if(active==="settings")renderSettings();
+  updateDebugInfo();
+};
 
-const renderDashboard=()=>{renderTeamSelector("#dashboardTeamSelector");const now=new Date();$("#currentDate").textContent=now.toLocaleDateString("el-GR",{day:"2-digit",month:"2-digit"});const active=getTeamPlayers().filter(p=>p.active);$("#totalPlayers").textContent=getTeamPlayers().length;$("#activePlayers").textContent=active.length;const today=todayISO();const teamPlayerIds=getTeamPlayers().map(p=>p.id);const todayAtt=appState.attendance.filter(a=>a.date===today&&teamPlayerIds.includes(a.playerId));const todayPresent=todayAtt.filter(a=>a.attended).length;const todayRate=todayAtt.length?Math.round((todayPresent/todayAtt.length)*100):0;$("#todayAttendance").textContent=todayRate+"%";$("#todayAttendance").style.color=todayRate>=80?"var(--success)":todayRate>=50?"var(--warning)":"var(--danger)";const weekAgo=new Date();weekAgo.setDate(weekAgo.getDate()-7);const weekly=appState.attendance.filter(a=>new Date(a.date)>=weekAgo&&teamPlayerIds.includes(a.playerId));const weeklyPresent=weekly.filter(a=>a.attended).length;const weeklyRate=weekly.length?Math.round((weeklyPresent/weekly.length)*100):0;$("#weeklyAvg").textContent=weeklyRate+"%";renderUpcomingSchedule();renderWeeklyChart()};
+const renderTeamSelector=(containerId)=>{
+  const container=$(containerId);
+  if(!container)return;
+  container.innerHTML="";
+  appState.teams.forEach(t=>{
+    const chip=document.createElement("div");
+    chip.className=`team-chip ${t.id===getCurrentTeam()?"active":""}`;
+    chip.textContent=t.name;
+    chip.style.borderColor=t.color;
+    if(t.id===getCurrentTeam())chip.style.background=t.color;
+    chip.addEventListener("click",()=>setCurrentTeam(t.id));
+    container.appendChild(chip);
+  });
+};
+
+const renderDashboard=()=>{
+  console.log("🎨 Rendering Dashboard...");
+  renderTeamSelector("#dashboardTeamSelector");
+  
+  const now=new Date();
+  $("#currentDate").textContent=now.toLocaleDateString("el-GR",{day:"2-digit",month:"2-digit"});
+  
+  const teamPlayers=getTeamPlayers();
+  const active=teamPlayers.filter(p=>p.active);
+  
+  console.log(`📊 Dashboard Stats: total=${teamPlayers.length}, active=${active.length}`);
+  
+  $("#totalPlayers").textContent=teamPlayers.length;
+  $("#activePlayers").textContent=active.length;
+  
+  const today=todayISO();
+  const teamPlayerIds=teamPlayers.map(p=>p.id);
+  const todayAtt=appState.attendance.filter(a=>a.date===today&&teamPlayerIds.includes(a.playerId));
+  const todayPresent=todayAtt.filter(a=>a.attended).length;
+  const todayRate=todayAtt.length?Math.round((todayPresent/todayAtt.length)*100):0;
+  $("#todayAttendance").textContent=todayRate+"%";
+  $("#todayAttendance").style.color=todayRate>=80?"var(--success)":todayRate>=50?"var(--warning)":"var(--danger)";
+  
+  const weekAgo=new Date();
+  weekAgo.setDate(weekAgo.getDate()-7);
+  const weekly=appState.attendance.filter(a=>new Date(a.date)>=weekAgo&&teamPlayerIds.includes(a.playerId));
+  const weeklyPresent=weekly.filter(a=>a.attended).length;
+  const weeklyRate=weekly.length?Math.round((weeklyPresent/weekly.length)*100):0;
+  $("#weeklyAvg").textContent=weeklyRate+"%";
+  
+  renderUpcomingSchedule();
+  renderWeeklyChart();
+};
 
 const renderUpcomingSchedule=()=>{const container=$("#upcomingSchedule");const now=new Date();const upcoming=sortBy(getTeamSchedules().map(s=>{const next=new Date();const daysUntil=(parseInt(s.dayOfWeek)-next.getDay()+7)%7;next.setDate(next.getDate()+(daysUntil||7));const[h,m]=s.time.split(":");next.setHours(parseInt(h),parseInt(m),0,0);return{...s,nextDate:next.toISOString()}}),"nextDate").slice(0,5);if(!upcoming.length){container.innerHTML='<div class="list-empty">📅 Δεν υπάρχουν προπονήσεις</div>';return}container.innerHTML=upcoming.map(s=>{const nextDate=new Date(s.nextDate);const isToday=nextDate.toDateString()===now.toDateString();return`<div class="schedule-item" style="${isToday?'border-color:var(--accent);border-width:2px;':''}"><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;${isToday?'color:var(--accent);':''}">${dayNameFull(s.dayOfWeek)} ${s.time} ${isToday?'🔥':''}</div><div style="font-size:.75rem;color:var(--text-secondary);">${s.type} • ${s.location||"-"}</div></div></div>`}).join("")};
 
 const renderWeeklyChart=()=>{const container=$("#weeklyChart");const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split("T")[0])}const teamPlayerIds=getTeamPlayers().map(p=>p.id);const data=days.map(date=>{const att=appState.attendance.filter(a=>a.date===date&&teamPlayerIds.includes(a.playerId));const present=att.filter(a=>a.attended).length;return{date,rate:att.length?Math.round((present/att.length)*100):0}});const maxRate=Math.max(...data.map(d=>d.rate),1);container.innerHTML=data.map(d=>{const height=(d.rate/maxRate)*100;return`<div class="bar" style="height:${height}%;"><div class="bar-value">${d.rate}%</div><div class="bar-label">${dayName(new Date(d.date).getDay())}</div></div>`}).join("")};
 
 const renderTeams=()=>{
+  console.log("🎨 Rendering Teams...");
   const container=$("#teamsContainer");
   if(!container)return;
   
@@ -585,6 +687,8 @@ const renderTeams=()=>{
   
   appState.teams.forEach(t=>{
     const playerCount=appState.players.filter(p=>p.teamId===t.id).length;
+    console.log(`🏆 Team ${t.name} (${t.id}): ${playerCount} παίκτες`);
+    
     const card=document.createElement("div");
     card.className="player-card";
     card.innerHTML=`
@@ -605,11 +709,15 @@ const renderTeams=()=>{
 };
 
 const renderPlayers=()=>{
+  console.log("🎨 Rendering Players...");
   renderTeamSelector("#playerTeamSelector");
+  
   const container=$("#playersContainer");
   if(!container)return;
   
   let players=getTeamPlayers();
+  console.log(`👥 Found ${players.length} players for team ${getCurrentTeam()}`);
+  
   if(playerFilters.search){
     const term=playerFilters.search.toLowerCase();
     players=players.filter(p=>p.name.toLowerCase().includes(term));
@@ -655,7 +763,14 @@ const renderPlayers=()=>{
   });
 };
 
-const updateTeamSelects=()=>{["playerTeam","scheduleTeam"].forEach(id=>{const sel=$(`#${id}`);if(!sel)return;sel.innerHTML=appState.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join("");sel.value=getCurrentTeam()})};
+const updateTeamSelects=()=>{
+  ["playerTeam","scheduleTeam"].forEach(id=>{
+    const sel=$(`#${id}`);
+    if(!sel)return;
+    sel.innerHTML=appState.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join("");
+    sel.value=getCurrentTeam();
+  });
+};
 
 const renderSchedule=()=>{renderTeamSelector("#scheduleTeamSelector");renderCalendarView();renderScheduleList()};
 
@@ -663,15 +778,69 @@ const renderCalendarView=()=>{const container=$("#calendarView");const today=new
 
 const renderScheduleList=()=>{const list=$("#scheduleList");const schedules=sortBy(getTeamSchedules(),"dayOfWeek");if(!schedules.length){list.innerHTML='<div class="list-empty">📅 Προσθέστε προπόνηση</div>';return}list.innerHTML=schedules.map(s=>`<div class="schedule-item"><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">${dayNameFull(s.dayOfWeek)} ${s.time}</div><div style="font-size:.75rem;color:var(--text-secondary);">${s.type}</div></div><div style="display:flex;gap:.25rem;"><button class="btn" data-edit-schedule="${s.id}">✏️</button><button class="btn btn-danger" data-del-schedule="${s.id}">🗑️</button></div></div>`).join("")};
 
-const renderAttendance=()=>{renderTeamSelector("#attendanceTeamSelector");const dateInput=$("#attendanceDate");if(!dateInput.value)dateInput.value=todayISO();renderAttendanceList()};
+const renderAttendance=()=>{
+  console.log("🎨 Rendering Attendance...");
+  renderTeamSelector("#attendanceTeamSelector");
+  const dateInput=$("#attendanceDate");
+  if(!dateInput.value)dateInput.value=todayISO();
+  renderAttendanceList();
+};
 
-const renderAttendanceList=()=>{const date=$("#attendanceDate").value;const container=$("#attendanceContainer");const players=sortBy(getTeamPlayers().filter(p=>p.active),"name");const teamPlayerIds=players.map(p=>p.id);const todayAtt=appState.attendance.filter(a=>a.date===date&&teamPlayerIds.includes(a.playerId));const present=todayAtt.filter(a=>a.attended).length;const total=players.length;const rate=total?Math.round((present/total)*100):0;$("#quickStats").innerHTML=`<strong>${present}/${total}</strong> παρόντες`;$("#attendanceProgress").style.width=rate+"%";if(!players.length){container.innerHTML='<div class="list-empty">👥 Δεν υπάρχουν παίκτες</div>';return}container.innerHTML="";players.forEach(p=>{const rec=appState.attendance.find(a=>a.playerId===p.id&&a.date===date);const card=document.createElement("div");card.className="player-card";card.innerHTML=`<div class="player-card-header"><div class="player-avatar">${getInitials(p.name)}</div><div style="flex:1;"><div style="font-weight:600;">${p.name}</div><div style="font-size:.8rem;color:var(--text-secondary);">${p.position}</div></div><span class="attendance-mark ${rec?.attended?"present":rec?"absent":""}" data-mark="${p.id}">${rec?.attended?"✓":rec?"✗":""}</span></div>`;container.appendChild(card)})};
+const renderAttendanceList=()=>{
+  const date=$("#attendanceDate").value;
+  const container=$("#attendanceContainer");
+  const players=sortBy(getTeamPlayers().filter(p=>p.active),"name");
+  
+  console.log(`✓ Rendering attendance for ${players.length} active players on ${date}`);
+  
+  const teamPlayerIds=players.map(p=>p.id);
+  const todayAtt=appState.attendance.filter(a=>a.date===date&&teamPlayerIds.includes(a.playerId));
+  const present=todayAtt.filter(a=>a.attended).length;
+  const total=players.length;
+  const rate=total?Math.round((present/total)*100):0;
+  
+  $("#quickStats").innerHTML=`<strong>${present}/${total}</strong> παρόντες`;
+  $("#attendanceProgress").style.width=rate+"%";
+  
+  if(!players.length){
+    container.innerHTML='<div class="list-empty">👥 Δεν υπάρχουν ενεργοί παίκτες</div>';
+    return;
+  }
+  
+  container.innerHTML="";
+  players.forEach(p=>{
+    const rec=appState.attendance.find(a=>a.playerId===p.id&&a.date===date);
+    const card=document.createElement("div");
+    card.className="player-card";
+    card.innerHTML=`
+      <div class="player-card-header">
+        <div class="player-avatar">${getInitials(p.name)}</div>
+        <div style="flex:1;">
+          <div style="font-weight:600;">${p.name}</div>
+          <div style="font-size:.8rem;color:var(--text-secondary);">${p.position}</div>
+        </div>
+        <span class="attendance-mark ${rec?.attended?"present":rec?"absent":""}" data-mark="${p.id}">${rec?.attended?"✓":rec?"✗":""}</span>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+};
 
 const renderReports=()=>{renderTeamSelector("#reportTeamSelector");const period=$("#reportPeriod").value;let startDate=new Date();if(period==="week")startDate.setDate(startDate.getDate()-7);else if(period==="month")startDate.setMonth(startDate.getMonth()-1);else if(period==="quarter")startDate.setMonth(startDate.getMonth()-3);else startDate.setFullYear(startDate.getFullYear()-1);const teamPlayerIds=getTeamPlayers().map(p=>p.id);const records=appState.attendance.filter(a=>new Date(a.date)>=startDate&&teamPlayerIds.includes(a.playerId));const present=records.filter(a=>a.attended).length;const avgRate=records.length?Math.round((present/records.length)*100):0;$("#reportTotalSessions").textContent=new Set(records.map(r=>r.date)).size;$("#reportAvgAttendance").textContent=avgRate+"%";const playerStats={};records.forEach(r=>{if(!playerStats[r.playerId])playerStats[r.playerId]={total:0,present:0};playerStats[r.playerId].total++;if(r.attended)playerStats[r.playerId].present++});let topPlayer=null;let topRate=0;Object.keys(playerStats).forEach(pid=>{const rate=(playerStats[pid].present/playerStats[pid].total)*100;if(rate>topRate){topRate=rate;topPlayer=appState.players.find(p=>p.id===pid)}});$("#reportTopPlayer").textContent=topPlayer?topPlayer.name.split(" ")[0]:"-";renderPlayerAttendanceChart(playerStats)};
 
 const renderPlayerAttendanceChart=(stats)=>{const container=$("#playerAttendanceChart");const data=Object.keys(stats).map(pid=>{const player=appState.players.find(p=>p.id===pid);if(!player)return null;const rate=Math.round((stats[pid].present/stats[pid].total)*100);return{player,rate}}).filter(Boolean).sort((a,b)=>b.rate-a.rate).slice(0,10);if(!data.length){container.innerHTML='<div class="list-empty">📊 Δεν υπάρχουν δεδομένα</div>';return}const maxRate=Math.max(...data.map(d=>d.rate),1);container.innerHTML=data.map(d=>{const height=(d.rate/maxRate)*100;return`<div class="bar" style="height:${height}%;"><div class="bar-value">${d.rate}%</div><div class="bar-label">${d.player.name.split(" ")[0]}</div></div>`}).join("")};
 
-const renderSettings=()=>{$("#clubName").value=appState.settings.clubName;$("#coachName").value=appState.settings.coachName;$("#autoSyncEnabled").checked=appState.settings.autoSyncEnabled;$("#brandName").textContent=appState.settings.clubName;$("#syncCode").textContent=appState.sync.syncCode||"XXXX-XXXX";$("#lastSyncTime").textContent=appState.sync.lastSync?formatTime(appState.sync.lastSync):"-";$("#connectionStatus").textContent=db?"🟢 Συνδεδεμένο":"🔴 Αποσυνδεδεμένο";checkPWAStatus()};
+const renderSettings=()=>{
+  $("#clubName").value=appState.settings.clubName;
+  $("#coachName").value=appState.settings.coachName;
+  $("#autoSyncEnabled").checked=appState.settings.autoSyncEnabled;
+  $("#debugMode").checked=appState.settings.debugMode||false;
+  $("#brandName").textContent=appState.settings.clubName;
+  $("#syncCode").textContent=appState.sync.syncCode||"XXXX-XXXX";
+  $("#lastSyncTime").textContent=appState.sync.lastSync?formatTime(appState.sync.lastSync):"-";
+  $("#connectionStatus").textContent=db?"🟢 Συνδεδεμένο":"🔴 Αποσυνδεδεμένο";
+  checkPWAStatus();
+};
 
 const checkPWAStatus=()=>{
   if(window.matchMedia('(display-mode: standalone)').matches){
@@ -688,7 +857,7 @@ const checkPWAStatus=()=>{
 };
 
 // ============================================
-// 🎯 EVENT LISTENERS (FIXED)
+// 🎯 EVENT LISTENERS
 // ============================================
 $("#themeToggle").addEventListener("click",()=>{appState.settings.theme=appState.settings.theme==="dark"?"light":"dark";applyTheme();saveStateDebounced()});
 $$(".tab-btn").forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
@@ -722,14 +891,9 @@ $("#teamForm").addEventListener("submit",e=>{
     appState.teams.push({id:uid(),...payload});
   }
   
-  saveStateDebounced();
+  saveState();
   closeModal("teamModal");
-  renderTeams();
-  renderTeamSelector("#dashboardTeamSelector");
-  renderTeamSelector("#playerTeamSelector");
-  renderTeamSelector("#scheduleTeamSelector");
-  renderTeamSelector("#attendanceTeamSelector");
-  renderTeamSelector("#reportTeamSelector");
+  renderAllViews();
   showToast("✅ Τμήμα αποθηκεύτηκε!","success");
 });
 
@@ -752,21 +916,25 @@ $("#playerForm").addEventListener("submit",e=>{
     registrationDate:todayISO()
   };
   
+  console.log("💾 Saving player:", payload);
+  
   if(!payload.name||!payload.position)return showToast("❌ Συμπλήρωσε όλα τα πεδία","error");
   
   if(editingPlayerId){
     const idx=appState.players.findIndex(p=>p.id===editingPlayerId);
     if(idx>=0){
       appState.players[idx]={...appState.players[idx],...payload};
+      console.log("✏️ Player updated:", appState.players[idx]);
     }
   }else{
-    appState.players.push({id:uid(),...payload});
+    const newPlayer={id:uid(),...payload};
+    appState.players.push(newPlayer);
+    console.log("➕ Player added:", newPlayer);
   }
   
-  saveStateDebounced();
+  saveState();
   closeModal("playerModal");
-  renderPlayers();
-  renderDashboard();
+  renderAllViews();
   showToast("✅ Παίκτης αποθηκεύτηκε!","success");
 });
 
@@ -799,28 +967,37 @@ $("#scheduleForm").addEventListener("submit",e=>{
     appState.schedules.push({id:uid(),...payload});
   }
   
-  saveStateDebounced();
+  saveState();
   closeModal("scheduleModal");
-  renderSchedule();
-  renderDashboard();
+  renderAllViews();
   showToast("✅ Προπόνηση αποθηκεύτηκε!","success");
 });
 
 // ATTENDANCE
 $("#markAttendanceBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;const players=getTeamPlayers().filter(p=>p.active);const list=$("#attendancePlayersList");list.innerHTML="";players.forEach(p=>{const rec=appState.attendance.find(a=>a.playerId===p.id&&a.date===date);const div=document.createElement("div");div.style.cssText="display:flex;align-items:center;gap:.5rem;padding:.75rem;background:var(--bg-secondary);border-radius:.5rem;margin-bottom:.5rem;";div.innerHTML=`<label style="flex:1;cursor:pointer;"><input type="checkbox" data-playerid="${p.id}" ${rec?.attended?"checked":""}> ${p.name}</label>`;list.appendChild(div)});openModal("attendanceModal")});
 
-$("#attendanceForm").addEventListener("submit",e=>{e.preventDefault();const date=$("#attendanceDate").value;$$('#attendancePlayersList input[type="checkbox"]').forEach(cb=>{const playerId=cb.dataset.playerid;const attended=cb.checked;const existIdx=appState.attendance.findIndex(a=>a.playerId===playerId&&a.date===date);const payload={playerId,date,attended,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveStateDebounced();closeModal("attendanceModal");renderAttendanceList();renderDashboard();showToast("✅ Παρουσίες αποθηκεύτηκαν!","success")});
+$("#attendanceForm").addEventListener("submit",e=>{e.preventDefault();const date=$("#attendanceDate").value;$$('#attendancePlayersList input[type="checkbox"]').forEach(cb=>{const playerId=cb.dataset.playerid;const attended=cb.checked;const existIdx=appState.attendance.findIndex(a=>a.playerId===playerId&&a.date===date);const payload={playerId,date,attended,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveState();closeModal("attendanceModal");renderAttendanceList();renderDashboard();showToast("✅ Παρουσίες αποθηκεύτηκαν!","success")});
 
-$("#attendanceContainer").addEventListener("click",e=>{const mark=e.target.closest("[data-mark]");if(!mark)return;const playerId=mark.dataset.mark;const date=$("#attendanceDate").value;const rec=appState.attendance.find(a=>a.playerId===playerId&&a.date===date);const attended=!rec?.attended;const payload={playerId,date,attended,timestamp:Date.now()};if(rec){const idx=appState.attendance.findIndex(a=>a.id===rec.id);appState.attendance[idx]={...appState.attendance[idx],...payload}}else{appState.attendance.push({id:uid(),...payload})}saveStateDebounced();renderAttendanceList();renderDashboard()});
+$("#attendanceContainer").addEventListener("click",e=>{const mark=e.target.closest("[data-mark]");if(!mark)return;const playerId=mark.dataset.mark;const date=$("#attendanceDate").value;const rec=appState.attendance.find(a=>a.playerId===playerId&&a.date===date);const attended=!rec?.attended;const payload={playerId,date,attended,timestamp:Date.now()};if(rec){const idx=appState.attendance.findIndex(a=>a.id===rec.id);appState.attendance[idx]={...appState.attendance[idx],...payload}}else{appState.attendance.push({id:uid(),...payload})}saveState();renderAttendanceList();renderDashboard()});
 
-$("#allPresentBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;getTeamPlayers().filter(p=>p.active).forEach(p=>{const existIdx=appState.attendance.findIndex(a=>a.playerId===p.id&&a.date===date);const payload={playerId:p.id,date,attended:true,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveStateDebounced();renderAttendanceList();renderDashboard()});
+$("#allPresentBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;getTeamPlayers().filter(p=>p.active).forEach(p=>{const existIdx=appState.attendance.findIndex(a=>a.playerId===p.id&&a.date===date);const payload={playerId:p.id,date,attended:true,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveState();renderAttendanceList();renderDashboard()});
 
-$("#allAbsentBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;getTeamPlayers().filter(p=>p.active).forEach(p=>{const existIdx=appState.attendance.findIndex(a=>a.playerId===p.id&&a.date===date);const payload={playerId:p.id,date,attended:false,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveStateDebounced();renderAttendanceList();renderDashboard()});
+$("#allAbsentBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;getTeamPlayers().filter(p=>p.active).forEach(p=>{const existIdx=appState.attendance.findIndex(a=>a.playerId===p.id&&a.date===date);const payload={playerId:p.id,date,attended:false,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveState();renderAttendanceList();renderDashboard()});
 
 // SETTINGS
 $("#clubName").addEventListener("change",e=>{appState.settings.clubName=e.target.value.trim();$("#brandName").textContent=e.target.value.trim();saveStateDebounced()});
 $("#coachName").addEventListener("change",e=>{appState.settings.coachName=e.target.value.trim();saveStateDebounced()});
 $("#autoSyncEnabled").addEventListener("change",e=>{appState.settings.autoSyncEnabled=e.target.checked;saveStateDebounced();if(e.target.checked)startRealtimeSync();else stopRealtimeSync()});
+$("#debugMode").addEventListener("change",e=>{
+  appState.settings.debugMode=e.target.checked;
+  saveStateDebounced();
+  if(e.target.checked){
+    $("#debugBox").style.display="block";
+    updateDebugInfo();
+  }else{
+    $("#debugBox").style.display="none";
+  }
+});
 
 $("#generateSyncCodeBtn").addEventListener("click",generateSyncCode);
 
@@ -833,7 +1010,7 @@ $("#syncCodeForm").addEventListener("submit",e=>{e.preventDefault();const input=
 $("#backupBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(appState,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`backup-${todayISO()}.json`;a.click();URL.revokeObjectURL(url);showToast("✅ Backup κατεβασμένο!","success")});
 
 $("#restoreBtn").addEventListener("click",()=>$("#restoreFile").click());
-$("#restoreFile").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const parsed=JSON.parse(ev.target.result);appState=parsed;saveStateDebounced();renderActiveView();showToast("✅ Αποκαταστάθηκε!","success")}catch(err){showToast("❌ Σφάλμα αρχείου","error")}};reader.readAsText(file)});
+$("#restoreFile").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const parsed=JSON.parse(ev.target.result);appState=parsed;saveState();renderAllViews();showToast("✅ Αποκαταστάθηκε!","success")}catch(err){showToast("❌ Σφάλμα αρχείου","error")}};reader.readAsText(file)});
 
 $("#clearDataBtn").addEventListener("click",()=>{if(!confirm("⚠️ Διαγραφή ΟΛΩΝ των δεδομένων;"))return;localStorage.clear();location.reload()});
 
@@ -844,7 +1021,7 @@ $("#reportPeriod").addEventListener("change",renderReports);
 $("#generateReportBtn").addEventListener("click",renderReports);
 $("#attendanceDate").addEventListener("change",renderAttendanceList);
 
-// EVENT DELEGATION FOR DELETE BUTTONS
+// EVENT DELEGATION FOR DELETE/EDIT BUTTONS
 document.body.addEventListener("click",e=>{
   // TEAMS DELETE
   const delTeamBtn=e.target.closest("[data-del-team]");
@@ -855,9 +1032,8 @@ document.body.addEventListener("click",e=>{
     appState.teams=appState.teams.filter(t=>t.id!==id);
     appState.players=appState.players.filter(p=>p.teamId!==id);
     appState.schedules=appState.schedules.filter(s=>s.teamId!==id);
-    saveStateDebounced();
-    renderTeams();
-    renderDashboard();
+    saveState();
+    renderAllViews();
     showToast("🗑️ Τμήμα διαγράφηκε!","info");
   }
   
@@ -883,9 +1059,8 @@ document.body.addEventListener("click",e=>{
     if(!confirm(`⚠️ Διαγραφή παίκτη "${player?.name}";`))return;
     appState.players=appState.players.filter(p=>p.id!==id);
     appState.attendance=appState.attendance.filter(a=>a.playerId!==id);
-    saveStateDebounced();
-    renderPlayers();
-    renderDashboard();
+    saveState();
+    renderAllViews();
     showToast("🗑️ Παίκτης διαγράφηκε!","info");
   }
   
@@ -911,9 +1086,8 @@ document.body.addEventListener("click",e=>{
     const id=delScheduleBtn.dataset.delSchedule;
     if(!confirm("⚠️ Διαγραφή προπόνησης;"))return;
     appState.schedules=appState.schedules.filter(s=>s.id!==id);
-    saveStateDebounced();
-    renderSchedule();
-    renderDashboard();
+    saveState();
+    renderAllViews();
     showToast("🗑️ Προπόνηση διαγράφηκε!","info");
   }
   
@@ -991,7 +1165,7 @@ if ("serviceWorker" in navigator) {
 // ============================================
 window.addEventListener("DOMContentLoaded",()=>{
   loadState();
-  renderActiveView();
+  renderAllViews();
   
   if(appState.sync.syncCode){
     startRealtimeSync();
@@ -999,8 +1173,10 @@ window.addEventListener("DOMContentLoaded",()=>{
   
   setInterval(()=>{$("#timestamp").textContent=new Date().toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"})},1000);
   
-  console.log("✅ App initialized - FIXED VERSION");
+  console.log("✅ App initialized - COMPLETE FIX");
   console.log("🔑 Sync Code:",appState.sync.syncCode||"none");
+  console.log("📊 Total Players:",appState.players.length);
+  console.log("🏆 Total Teams:",appState.teams.length);
   
   if(!appState.sync.syncCode){
     setTimeout(()=>showToast("👋 Δημιούργησε Sync Code για multi-device!","info"),2000);
