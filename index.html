@@ -4,15 +4,13 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <meta name="theme-color" content="#14a34b"/>
-<meta name="description" content="Διαχείριση Αθλητικού Σωματείου - Παίκτες, Προπονήσεις, Παρουσίες"/>
+<meta name="description" content="Διαχείριση Αθλητικού Σωματείου"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="icon" type="image/png" href="icon-192.png"/>
 <title>SportClub Pro Manager</title>
 
-<!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 
 <style>
 :root{--bg-primary:#0a0a12;--bg-secondary:#12121e;--bg-card:#1a1a2a;--accent:#14a34b;--accent-dark:#0d7a35;--text-primary:#e0e0e0;--text-secondary:#a0a0b0;--border:#2a2a3a;--success:#14a34b;--warning:#f59e0b;--danger:#ef162a;--info:#0ea5e9;--shadow:0 4px 6px -1px rgba(0,0,0,0.3)}
@@ -49,7 +47,7 @@ main{flex:1;max-width:1400px;width:100%;margin:0 auto;padding:.75rem;padding-bot
 .btn-primary:hover{background:var(--accent-dark)}
 .btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
 .btn-danger:hover{background:#d11020}
-.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:disabled{opacity:.5;cursor:not-allowed;pointer-events:none}
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem}
 .stat-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:.5rem;padding:.875rem;text-align:center;cursor:pointer;transition:all .3s}
 .stat-value{font-size:1.75rem;font-weight:800;color:var(--accent);line-height:1}
@@ -120,13 +118,11 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 .camera-preview{width:100%;max-width:300px;height:300px;background:var(--bg-secondary);border:2px dashed var(--border);border-radius:.5rem;display:flex;align-items:center;justify-content:center;margin:1rem auto;overflow:hidden;position:relative}
 .camera-preview img,.camera-preview video{width:100%;height:100%;object-fit:cover}
 .location-badge{display:inline-flex;align-items:center;gap:.25rem;padding:.25rem .5rem;background:var(--info);color:#fff;border-radius:.5rem;font-size:.7rem;font-weight:600}
-.share-btn{position:absolute;top:.5rem;right:.5rem;background:var(--accent);color:#fff;border:none;padding:.5rem;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow)}
 @media(max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr)}.settings-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 
-<!-- Install Prompt -->
 <div class="install-prompt" id="installPrompt">
   <div style="flex:1">📱 <strong>Εγκατάσταση</strong><br>Προσθέστε την εφαρμογή στην αρχική οθόνη</div>
   <button id="installBtn">Εγκατάσταση</button>
@@ -160,10 +156,7 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 <!-- DASHBOARD -->
 <section class="view active" id="dashboard">
 <div class="card">
-<div class="card-header">
-<h2 class="card-title">🏆 Τμήμα</h2>
-<button class="btn btn-primary" id="shareReportBtn">📤 Μοιρασμός</button>
-</div>
+<div class="card-header"><h2 class="card-title">🏆 Τμήμα</h2></div>
 <div class="team-selector" id="dashboardTeamSelector"></div>
 </div>
 <div class="card">
@@ -256,8 +249,6 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 <div class="form-group"><label>Προπονητής</label><input type="text" id="coachName"/></div>
 </div>
 <div class="toggle-switch"><input type="checkbox" id="autoSyncEnabled" checked/><label>Αυτόματος Συγχρονισμός</label></div>
-<div class="toggle-switch"><input type="checkbox" id="notificationsEnabled"/><label>🔔 Push Notifications</label></div>
-<div class="toggle-switch"><input type="checkbox" id="backgroundSyncEnabled" checked/><label>🔄 Background Sync</label></div>
 </div>
 
 <div class="card">
@@ -289,31 +280,15 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 </div>
 
 <div class="card">
-<h2 class="card-title">📱 PWA & Features Status</h2>
+<h2 class="card-title">📱 PWA Status</h2>
 <div style="padding:1rem;background:var(--bg-secondary);border-radius:.5rem;">
 <div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
-<span>PWA:</span>
+<span>Εγκατάσταση:</span>
 <strong id="pwaStatus">-</strong>
 </div>
-<div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
+<div style="display:flex;justify-content:space-between;">
 <span>Offline Cache:</span>
 <strong id="cacheStatus">-</strong>
-</div>
-<div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
-<span>Push Notifications:</span>
-<strong id="pushStatus">-</strong>
-</div>
-<div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
-<span>Background Sync:</span>
-<strong id="bgSyncStatus">-</strong>
-</div>
-<div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
-<span>Camera:</span>
-<strong id="cameraStatus">-</strong>
-</div>
-<div style="display:flex;justify-content:space-between;">
-<span>Geolocation:</span>
-<strong id="geoStatus">-</strong>
 </div>
 </div>
 </div>
@@ -328,12 +303,7 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 <div class="form-group"><label>Όνομα *</label><input type="text" id="teamName" required placeholder="π.χ. U15"/></div>
 <div class="form-group"><label>Περιγραφή</label><textarea id="teamDesc" rows="2"></textarea></div>
 <div class="form-group"><label>Χρώμα</label><input type="color" id="teamColor" value="#14a34b"/></div>
-<div class="form-group">
-<label>📍 Τοποθεσία Γηπέδου</label>
-<input type="text" id="teamLocation" placeholder="Θα συμπληρωθεί αυτόματα" readonly/>
-<button type="button" class="btn" id="getLocationBtn">📍 Εντοπισμός</button>
-</div>
-<div class="form-actions"><button type="button" class="btn" data-close="teamModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 OK</button></div>
+<div class="form-actions"><button type="button" class="btn" data-close="teamModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 Αποθήκευση</button></div>
 </form>
 </div>
 </div>
@@ -345,20 +315,8 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 <div class="form-group"><label>Τμήμα *</label><select id="playerTeam" required></select></div>
 <div class="form-group"><label>Ονοματεπώνυμο *</label><input type="text" id="playerName" required/></div>
 <div class="form-group"><label>Θέση *</label><select id="playerPosition" required><option value="">Επιλέξτε...</option><option value="Τερματοφύλακας">Τερματοφύλακας</option><option value="Αμυντικός">Αμυντικός</option><option value="Μέσος">Μέσος</option><option value="Επιθετικός">Επιθετικός</option></select></div>
-<div class="form-group">
-<label>📷 Φωτογραφία</label>
-<div class="camera-preview" id="cameraPreview">
-<span style="color:var(--text-secondary);">Πάτα για φωτογραφία</span>
-</div>
-<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;"/>
-<div style="display:flex;gap:.5rem;">
-<button type="button" class="btn" id="takeCameraBtn">📷 Camera</button>
-<button type="button" class="btn" id="takePhotoBtn">🖼️ Συλλογή</button>
-<button type="button" class="btn btn-danger" id="removePhotoBtn" style="display:none;">🗑️</button>
-</div>
-</div>
 <div class="toggle-switch"><input type="checkbox" id="playerActive" checked/><label>Ενεργός</label></div>
-<div class="form-actions"><button type="button" class="btn" data-close="playerModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 OK</button></div>
+<div class="form-actions"><button type="button" class="btn" data-close="playerModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 Αποθήκευση</button></div>
 </form>
 </div>
 </div>
@@ -372,8 +330,7 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 <div class="form-group"><label>Ώρα</label><input type="time" id="scheduleTime" value="18:00" required/></div>
 <div class="form-group"><label>Τύπος</label><input type="text" id="scheduleType" required placeholder="π.χ. Τακτική"/></div>
 <div class="form-group"><label>Τοποθεσία</label><input type="text" id="scheduleLocation" placeholder="π.χ. Γήπεδο"/></div>
-<div class="toggle-switch"><input type="checkbox" id="notifySchedule"/><label>🔔 Ειδοποίηση 1 ώρα πριν</label></div>
-<div class="form-actions"><button type="button" class="btn" data-close="scheduleModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 OK</button></div>
+<div class="form-actions"><button type="button" class="btn" data-close="scheduleModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 Αποθήκευση</button></div>
 </form>
 </div>
 </div>
@@ -383,7 +340,7 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 <div class="modal-header"><h2>Σήμανση</h2><button class="close-btn" data-close="attendanceModal">&times;</button></div>
 <form id="attendanceForm">
 <div style="max-height:60vh;overflow-y:auto;" id="attendancePlayersList"></div>
-<div class="form-actions"><button type="button" class="btn" data-close="attendanceModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 OK</button></div>
+<div class="form-actions"><button type="button" class="btn" data-close="attendanceModal">Άκυρο</button><button type="submit" class="btn btn-primary">💾 Αποθήκευση</button></div>
 </form>
 </div>
 </div>
@@ -396,18 +353,6 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 <p style="font-size:.8rem;color:var(--text-secondary);margin-bottom:1rem;text-align:center;">Εισάγετε τον κωδικό από την άλλη συσκευή</p>
 <div class="form-actions"><button type="button" class="btn" data-close="syncCodeModal">Άκυρο</button><button type="submit" class="btn btn-primary">🔄 Συγχρονισμός</button></div>
 </form>
-</div>
-</div>
-
-<div class="modal" id="cameraModal">
-<div class="modal-content">
-<div class="modal-header"><h2>📷 Κάμερα</h2><button class="close-btn" data-close="cameraModal">&times;</button></div>
-<video id="cameraStream" autoplay playsinline style="width:100%;border-radius:.5rem;"></video>
-<div class="form-actions">
-<button type="button" class="btn" data-close="cameraModal">Άκυρο</button>
-<button type="button" class="btn btn-primary" id="capturePhotoBtn">📸 Λήψη</button>
-</div>
-<canvas id="photoCanvas" style="display:none;"></canvas>
 </div>
 </div>
 
@@ -428,21 +373,12 @@ const firebaseConfig = {
 };
 
 let db = null;
-let messaging = null;
 let syncRef = null;
 let isInitialLoad = true;
-let cameraStream = null;
-let currentPhotoData = null;
 
 try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.database();
-  
-  // Firebase Messaging (Push Notifications)
-  if (firebase.messaging.isSupported()) {
-    messaging = firebase.messaging();
-  }
-  
   console.log("✅ Firebase initialized");
 } catch (e) {
   console.error("❌ Firebase error:", e);
@@ -451,7 +387,7 @@ try {
 // ============================================
 // 💾 STATE
 // ============================================
-const defaultState={teams:[{id:"default",name:"Κύρια Ομάδα",description:"",color:"#14a34b",location:null}],players:[],schedules:[],attendance:[],settings:{clubName:"Αθλητικό Σωματείο",coachName:"",theme:"dark",currentTeam:"default",autoSyncEnabled:true,notificationsEnabled:false,backgroundSyncEnabled:true},sync:{lastSync:0,syncCode:"",version:1,deviceId:"",pendingSync:[]}};
+const defaultState={teams:[{id:"default",name:"Κύρια Ομάδα",description:"",color:"#14a34b"}],players:[],schedules:[],attendance:[],settings:{clubName:"Αθλητικό Σωματείο",coachName:"",theme:"dark",currentTeam:"default",autoSyncEnabled:true},sync:{lastSync:0,syncCode:"",version:1,deviceId:""}};
 let appState=JSON.parse(JSON.stringify(defaultState));
 let editingPlayerId=null;
 let editingScheduleId=null;
@@ -479,7 +415,7 @@ const getTeamPlayers=()=>appState.players.filter(p=>p.teamId===getCurrentTeam())
 const getTeamSchedules=()=>appState.schedules.filter(s=>s.teamId===getCurrentTeam());
 
 // ============================================
-// 💾 STORAGE & SYNC (IMPROVED WITH BACKGROUND SYNC)
+// 💾 STORAGE & SYNC (FIXED)
 // ============================================
 const saveState=()=>{
   appState.sync.lastSync=Date.now();
@@ -488,23 +424,15 @@ const saveState=()=>{
   localStorage.setItem('sportclub:state',JSON.stringify(appState));
   
   if(db && appState.sync.syncCode && appState.settings.autoSyncEnabled){
-    if(navigator.onLine){
-      try{
-        updateSyncStatus('syncing','🔄 Syncing');
-        db.ref(`sync/${appState.sync.syncCode}`).set(appState).then(()=>{
-          updateSyncStatus('online','✅ Synced');
-          $("#lastSyncTime").textContent=formatTime(Date.now());
-          appState.sync.pendingSync = [];
-        }).catch(e=>{
-          console.error('Sync error:',e);
-          queueBackgroundSync();
-        });
-      }catch(e){
-        console.error('Firebase save error:',e);
-        queueBackgroundSync();
-      }
-    } else {
-      queueBackgroundSync();
+    try{
+      updateSyncStatus('syncing','🔄 Syncing');
+      db.ref(`sync/${appState.sync.syncCode}`).set(appState).then(()=>{
+        updateSyncStatus('online','✅ Synced');
+        $("#lastSyncTime").textContent=formatTime(Date.now());
+      });
+    }catch(e){
+      console.error('Firebase save error:',e);
+      updateSyncStatus('offline','❌ Offline');
     }
   }
 };
@@ -512,23 +440,6 @@ const saveState=()=>{
 const saveStateDebounced=()=>{
   clearTimeout(saveTimer);
   saveTimer=setTimeout(saveState,500);
-};
-
-const queueBackgroundSync=()=>{
-  if('serviceWorker' in navigator && 'sync' in registration){
-    navigator.serviceWorker.ready.then(reg=>{
-      return reg.sync.register('sync-data');
-    }).then(()=>{
-      updateSyncStatus('offline','⏳ Queued');
-      appState.sync.pendingSync.push(Date.now());
-      localStorage.setItem('sportclub:state',JSON.stringify(appState));
-    }).catch(e=>{
-      console.warn('Background sync not available:',e);
-      updateSyncStatus('offline','❌ Offline');
-    });
-  } else {
-    updateSyncStatus('offline','❌ Offline');
-  }
 };
 
 const loadState=()=>{
@@ -640,235 +551,16 @@ const generateSyncCode=()=>{
 };
 
 // ============================================
-// 🔔 PUSH NOTIFICATIONS
-// ============================================
-const requestNotificationPermission=async()=>{
-  if(!messaging){
-    showToast("❌ Notifications not supported","error");
-    return false;
-  }
-  
-  try{
-    const permission=await Notification.requestPermission();
-    
-    if(permission==='granted'){
-      const token=await messaging.getToken({
-        vapidKey:'BDVRTQaRTh8bBYW3P5uUA7GnzWRzXwPQoMm-_CAUvGJ_yUtgKkwgTxLqe9Djikqd18oYM82l7STCqtQw0rA9XLk'// Από Firebase Console
-      });
-      
-      console.log('FCM Token:',token);
-      appState.settings.fcmToken=token;
-      appState.settings.notificationsEnabled=true;
-      saveStateDebounced();
-      
-      showToast("✅ Ειδοποιήσεις ενεργοποιήθηκαν!","success");
-      checkFeatureStatus();
-      return true;
-    } else {
-      appState.settings.notificationsEnabled=false;
-      showToast("❌ Άρνηση ειδοποιήσεων","error");
-      return false;
-    }
-  }catch(e){
-    console.error('Notification error:',e);
-    showToast("❌ Σφάλμα ειδοποιήσεων","error");
-    return false;
-  }
-};
-
-const sendLocalNotification=(title,body)=>{
-  if('Notification' in window && Notification.permission==='granted'){
-    new Notification(title,{
-      body:body,
-      icon:'/icon-192.png',
-      badge:'/icon-192.png',
-      vibrate:[200,100,200]
-    });
-  }
-};
-
-const scheduleTrainingNotification=(schedule)=>{
-  // Υπολογισμός επόμενης ημέρας προπόνησης
-  const now=new Date();
-  const targetDay=parseInt(schedule.dayOfWeek);
-  const [hour,minute]=schedule.time.split(':');
-  
-  let daysUntil=(targetDay-now.getDay()+7)%7;
-  if(daysUntil===0)daysUntil=7;
-  
-  const nextDate=new Date();
-  nextDate.setDate(now.getDate()+daysUntil);
-  nextDate.setHours(parseInt(hour)-1,parseInt(minute),0,0);
-  
-  const timeUntil=nextDate.getTime()-now.getTime();
-  
-  if(timeUntil>0 && timeUntil<7*24*60*60*1000){
-    setTimeout(()=>{
-      sendLocalNotification(
-        `🏃 Προπόνηση σε 1 ώρα!`,
-        `${schedule.type} - ${schedule.location||'Γήπεδο'}`
-      );
-    },timeUntil);
-  }
-};
-
-// ============================================
-// 📤 SHARE API
-// ============================================
-const shareReport=async()=>{
-  const team=appState.teams.find(t=>t.id===getCurrentTeam());
-  const players=getTeamPlayers();
-  const active=players.filter(p=>p.active);
-  
-  const text=`📊 ${appState.settings.clubName}
-🏆 Τμήμα: ${team.name}
-👥 Παίκτες: ${active.length}/${players.length}
-📅 ${formatDate(Date.now())}`;
-  
-  if(navigator.share){
-    try{
-      await navigator.share({
-        title:`${appState.settings.clubName} - Αναφορά`,
-        text:text,
-        url:window.location.href
-      });
-      showToast("✅ Κοινοποιήθηκε!","success");
-    }catch(e){
-      if(e.name!=='AbortError'){
-        console.error('Share error:',e);
-        fallbackShare(text);
-      }
-    }
-  } else {
-    fallbackShare(text);
-  }
-};
-
-const fallbackShare=(text)=>{
-  navigator.clipboard.writeText(text).then(()=>{
-    showToast("📋 Αντιγράφηκε στο clipboard!","success");
-  }).catch(()=>{
-    showToast("❌ Σφάλμα κοινοποίησης","error");
-  });
-};
-
-// ============================================
-// 📷 CAMERA INTEGRATION
-// ============================================
-const startCamera=async()=>{
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'environment'},
-      audio:false
-    });
-    
-    cameraStream=stream;
-    const video=$("#cameraStream");
-    video.srcObject=stream;
-    openModal('cameraModal');
-    
-  }catch(e){
-    console.error('Camera error:',e);
-    showToast("❌ Δεν υπάρχει πρόσβαση στην κάμερα","error");
-  }
-};
-
-const stopCamera=()=>{
-  if(cameraStream){
-    cameraStream.getTracks().forEach(track=>track.stop());
-    cameraStream=null;
-  }
-};
-
-const capturePhoto=()=>{
-  const video=$("#cameraStream");
-  const canvas=$("#photoCanvas");
-  const ctx=canvas.getContext('2d');
-  
-  canvas.width=video.videoWidth;
-  canvas.height=video.videoHeight;
-  ctx.drawImage(video,0,0);
-  
-  currentPhotoData=canvas.toDataURL('image/jpeg',0.8);
-  
-  const preview=$("#cameraPreview");
-  preview.innerHTML=`<img src="${currentPhotoData}" alt="Photo"/>`;
-  $("#removePhotoBtn").style.display="inline-flex";
-  
-  stopCamera();
-  closeModal('cameraModal');
-  showToast("✅ Φωτογραφία λήφθηκε!","success");
-};
-
-const selectPhotoFromGallery=()=>{
-  $("#photoInput").click();
-};
-
-$("#photoInput").addEventListener('change',e=>{
-  const file=e.target.files[0];
-  if(!file)return;
-  
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    currentPhotoData=ev.target.result;
-    const preview=$("#cameraPreview");
-    preview.innerHTML=`<img src="${currentPhotoData}" alt="Photo"/>`;
-    $("#removePhotoBtn").style.display="inline-flex";
-    showToast("✅ Φωτογραφία επιλέχθηκε!","success");
-  };
-  reader.readAsDataURL(file);
-});
-
-const removePhoto=()=>{
-  currentPhotoData=null;
-  $("#cameraPreview").innerHTML='<span style="color:var(--text-secondary);">Πάτα για φωτογραφία</span>';
-  $("#removePhotoBtn").style.display="none";
-};
-
-// ============================================
-// 📍 GEOLOCATION
-// ============================================
-const getCurrentLocation=()=>{
-  return new Promise((resolve,reject)=>{
-    if(!navigator.geolocation){
-      reject(new Error('Geolocation not supported'));
-      return;
-    }
-    
-    navigator.geolocation.getCurrentPosition(
-      position=>{
-        const {latitude,longitude}=position.coords;
-        resolve({lat:latitude,lng:longitude});
-      },
-      error=>{
-        reject(error);
-      },
-      {enableHighAccuracy:true,timeout:10000,maximumAge:0}
-    );
-  });
-};
-
-const getAddressFromCoords=async(lat,lng)=>{
-  try{
-    const response=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-    const data=await response.json();
-    return data.display_name||`${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-  }catch(e){
-    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-  }
-};
-
-// ============================================
 // 🎨 UI FUNCTIONS
 // ============================================
 const showToast=(msg,type="info")=>{const toast=$("#toast");toast.textContent=msg;toast.className=`notification-toast show ${type}`;setTimeout(()=>toast.classList.remove("show"),3500)};
 const openModal=(id)=>{const m=$(`#${id}`);if(m){m.classList.add("active");document.body.style.overflow="hidden"}};
-const closeModal=(id)=>{const m=$(`#${id}`);if(m){m.classList.remove("active");document.body.style.overflow="";if(id==='cameraModal')stopCamera()}};
+const closeModal=(id)=>{const m=$(`#${id}`);if(m){m.classList.remove("active");document.body.style.overflow=""}};
 const switchView=(n)=>{$$(".view").forEach(v=>v.classList.remove("active"));$$(".tab-btn").forEach(b=>b.classList.remove("active"));$(`#${n}`).classList.add("active");$(`[data-view="${n}"]`).classList.add("active");window.scrollTo(0,0);renderActiveView()};
 const applyTheme=()=>{document.body.dataset.theme=appState.settings.theme;$("#themeIcon").textContent=appState.settings.theme==="dark"?"🌙":"☀️"};
 
 // ============================================
-// 📊 RENDER FUNCTIONS
+// 📊 RENDER FUNCTIONS (FIXED)
 // ============================================
 const renderActiveView=()=>{const active=$(".tab-btn.active")?.dataset.view;if(active==="dashboard")renderDashboard();if(active==="teams")renderTeams();if(active==="players")renderPlayers();if(active==="schedule")renderSchedule();if(active==="attendance")renderAttendance();if(active==="reports")renderReports();if(active==="settings")renderSettings()};
 
@@ -880,9 +572,88 @@ const renderUpcomingSchedule=()=>{const container=$("#upcomingSchedule");const n
 
 const renderWeeklyChart=()=>{const container=$("#weeklyChart");const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split("T")[0])}const teamPlayerIds=getTeamPlayers().map(p=>p.id);const data=days.map(date=>{const att=appState.attendance.filter(a=>a.date===date&&teamPlayerIds.includes(a.playerId));const present=att.filter(a=>a.attended).length;return{date,rate:att.length?Math.round((present/att.length)*100):0}});const maxRate=Math.max(...data.map(d=>d.rate),1);container.innerHTML=data.map(d=>{const height=(d.rate/maxRate)*100;return`<div class="bar" style="height:${height}%;"><div class="bar-value">${d.rate}%</div><div class="bar-label">${dayName(new Date(d.date).getDay())}</div></div>`}).join("")};
 
-const renderTeams=()=>{const container=$("#teamsContainer");container.innerHTML="";appState.teams.forEach(t=>{const playerCount=appState.players.filter(p=>p.teamId===t.id).length;const card=document.createElement("div");card.className="player-card";card.innerHTML=`<div class="player-card-header"><div class="player-avatar" style="background:${t.color};">🏆</div><div style="flex:1;"><div style="font-weight:600;">${t.name}</div><div style="font-size:.8rem;color:var(--text-secondary);">${playerCount} παίκτες${t.location?` • <span class="location-badge">📍 ${t.location}</span>`:''}</div></div></div><div style="display:flex;gap:.5rem;"><button class="btn btn-primary" data-edit-team="${t.id}" style="flex:1;">✏️</button><button class="btn btn-danger" data-del-team="${t.id}" ${t.id==="default"?"disabled":""}>🗑️</button></div>`;container.appendChild(card)})};
+const renderTeams=()=>{
+  const container=$("#teamsContainer");
+  if(!container)return;
+  
+  container.innerHTML="";
+  
+  if(appState.teams.length===0){
+    container.innerHTML='<div class="list-empty">🏆 Δεν υπάρχουν τμήματα</div>';
+    return;
+  }
+  
+  appState.teams.forEach(t=>{
+    const playerCount=appState.players.filter(p=>p.teamId===t.id).length;
+    const card=document.createElement("div");
+    card.className="player-card";
+    card.innerHTML=`
+      <div class="player-card-header">
+        <div class="player-avatar" style="background:${t.color};">🏆</div>
+        <div style="flex:1;">
+          <div style="font-weight:600;">${t.name}</div>
+          <div style="font-size:.8rem;color:var(--text-secondary);">${playerCount} παίκτες</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;">
+        <button class="btn btn-primary" data-edit-team="${t.id}" style="flex:1;">✏️ Επεξεργασία</button>
+        <button class="btn btn-danger" data-del-team="${t.id}" ${t.id==="default"?"disabled":""}>🗑️ Διαγραφή</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+};
 
-const renderPlayers=()=>{renderTeamSelector("#playerTeamSelector");const container=$("#playersContainer");let players=getTeamPlayers();if(playerFilters.search){const term=playerFilters.search.toLowerCase();players=players.filter(p=>p.name.toLowerCase().includes(term))}if(playerFilters.position)players=players.filter(p=>p.position===playerFilters.position);if(playerFilters.status){const active=playerFilters.status==="active";players=players.filter(p=>p.active===active)}if(!players.length){container.innerHTML='<div class="list-empty">👥 Δεν βρέθηκαν</div>';return}container.innerHTML="";players.forEach(p=>{const rate=getPlayerAttendanceRate(p.id);const card=document.createElement("div");card.className="player-card";card.innerHTML=`<div class="player-card-header"><div class="player-avatar">${p.photo?`<img src="${p.photo}" alt="${p.name}"/>`:getInitials(p.name)}</div><div style="flex:1;"><div style="font-weight:600;">${p.name}</div><div style="font-size:.8rem;color:var(--text-secondary);">${p.position}</div></div><span class="badge ${p.active?"active":"inactive"}">${p.active?"ON":"OFF"}</span></div><div class="player-stats"><div class="player-stat"><div class="player-stat-value">${rate}%</div><div class="player-stat-label">Παρουσία</div></div></div><div style="display:flex;gap:.5rem;margin-top:.75rem;"><button class="btn btn-primary" data-edit-player="${p.id}" style="flex:1;">✏️</button><button class="btn btn-danger" data-del-player="${p.id}">🗑️</button></div>`;container.appendChild(card)})};
+const renderPlayers=()=>{
+  renderTeamSelector("#playerTeamSelector");
+  const container=$("#playersContainer");
+  if(!container)return;
+  
+  let players=getTeamPlayers();
+  if(playerFilters.search){
+    const term=playerFilters.search.toLowerCase();
+    players=players.filter(p=>p.name.toLowerCase().includes(term));
+  }
+  if(playerFilters.position)players=players.filter(p=>p.position===playerFilters.position);
+  if(playerFilters.status){
+    const active=playerFilters.status==="active";
+    players=players.filter(p=>p.active===active);
+  }
+  
+  container.innerHTML="";
+  
+  if(!players.length){
+    container.innerHTML='<div class="list-empty">👥 Δεν βρέθηκαν παίκτες</div>';
+    return;
+  }
+  
+  players.forEach(p=>{
+    const rate=getPlayerAttendanceRate(p.id);
+    const card=document.createElement("div");
+    card.className="player-card";
+    card.innerHTML=`
+      <div class="player-card-header">
+        <div class="player-avatar">${getInitials(p.name)}</div>
+        <div style="flex:1;">
+          <div style="font-weight:600;">${p.name}</div>
+          <div style="font-size:.8rem;color:var(--text-secondary);">${p.position}</div>
+        </div>
+        <span class="badge ${p.active?"active":"inactive"}">${p.active?"ON":"OFF"}</span>
+      </div>
+      <div class="player-stats">
+        <div class="player-stat">
+          <div class="player-stat-value">${rate}%</div>
+          <div class="player-stat-label">Παρουσία</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-top:.75rem;">
+        <button class="btn btn-primary" data-edit-player="${p.id}" style="flex:1;">✏️ Επεξεργασία</button>
+        <button class="btn btn-danger" data-del-player="${p.id}">🗑️ Διαγραφή</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+};
 
 const updateTeamSelects=()=>{["playerTeam","scheduleTeam"].forEach(id=>{const sel=$(`#${id}`);if(!sel)return;sel.innerHTML=appState.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join("");sel.value=getCurrentTeam()})};
 
@@ -890,19 +661,19 @@ const renderSchedule=()=>{renderTeamSelector("#scheduleTeamSelector");renderCale
 
 const renderCalendarView=()=>{const container=$("#calendarView");const today=new Date();container.innerHTML="";for(let i=0;i<7;i++){const date=new Date(today);date.setDate(today.getDate()-today.getDay()+i);const dayNum=date.getDay();const trainings=getTeamSchedules().filter(s=>parseInt(s.dayOfWeek)===dayNum);const isToday=date.toDateString()===today.toDateString();const div=document.createElement("div");div.className=`calendar-day ${trainings.length>0?'has-training':''} ${isToday?'today':''}`;div.innerHTML=`<div style="font-weight:600;">${dayName(dayNum)}</div><div style="font-size:1.1rem;">${date.getDate()}</div>`;container.appendChild(div)}};
 
-const renderScheduleList=()=>{const list=$("#scheduleList");const schedules=sortBy(getTeamSchedules(),"dayOfWeek");if(!schedules.length){list.innerHTML='<div class="list-empty">📅 Προσθέστε</div>';return}list.innerHTML=schedules.map(s=>`<div class="schedule-item"><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">${dayNameFull(s.dayOfWeek)} ${s.time} ${s.notifyEnabled?'🔔':''}</div><div style="font-size:.75rem;color:var(--text-secondary);">${s.type}</div></div><div style="display:flex;gap:.25rem;"><button class="btn" data-edit-schedule="${s.id}">✏️</button><button class="btn btn-danger" data-del-schedule="${s.id}">🗑️</button></div></div>`).join("")};
+const renderScheduleList=()=>{const list=$("#scheduleList");const schedules=sortBy(getTeamSchedules(),"dayOfWeek");if(!schedules.length){list.innerHTML='<div class="list-empty">📅 Προσθέστε προπόνηση</div>';return}list.innerHTML=schedules.map(s=>`<div class="schedule-item"><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">${dayNameFull(s.dayOfWeek)} ${s.time}</div><div style="font-size:.75rem;color:var(--text-secondary);">${s.type}</div></div><div style="display:flex;gap:.25rem;"><button class="btn" data-edit-schedule="${s.id}">✏️</button><button class="btn btn-danger" data-del-schedule="${s.id}">🗑️</button></div></div>`).join("")};
 
 const renderAttendance=()=>{renderTeamSelector("#attendanceTeamSelector");const dateInput=$("#attendanceDate");if(!dateInput.value)dateInput.value=todayISO();renderAttendanceList()};
 
-const renderAttendanceList=()=>{const date=$("#attendanceDate").value;const container=$("#attendanceContainer");const players=sortBy(getTeamPlayers().filter(p=>p.active),"name");const teamPlayerIds=players.map(p=>p.id);const todayAtt=appState.attendance.filter(a=>a.date===date&&teamPlayerIds.includes(a.playerId));const present=todayAtt.filter(a=>a.attended).length;const total=players.length;const rate=total?Math.round((present/total)*100):0;$("#quickStats").innerHTML=`<strong>${present}/${total}</strong> παρόντες`;$("#attendanceProgress").style.width=rate+"%";if(!players.length){container.innerHTML='<div class="list-empty">👥 Δεν υπάρχουν</div>';return}container.innerHTML="";players.forEach(p=>{const rec=appState.attendance.find(a=>a.playerId===p.id&&a.date===date);const card=document.createElement("div");card.className="player-card";card.innerHTML=`<div class="player-card-header"><div class="player-avatar">${p.photo?`<img src="${p.photo}" alt="${p.name}"/>`:getInitials(p.name)}</div><div style="flex:1;"><div style="font-weight:600;">${p.name}</div><div style="font-size:.8rem;color:var(--text-secondary);">${p.position}</div></div><span class="attendance-mark ${rec?.attended?"present":rec?"absent":""}" data-mark="${p.id}">${rec?.attended?"✓":rec?"✗":""}</span></div>`;container.appendChild(card)})};
+const renderAttendanceList=()=>{const date=$("#attendanceDate").value;const container=$("#attendanceContainer");const players=sortBy(getTeamPlayers().filter(p=>p.active),"name");const teamPlayerIds=players.map(p=>p.id);const todayAtt=appState.attendance.filter(a=>a.date===date&&teamPlayerIds.includes(a.playerId));const present=todayAtt.filter(a=>a.attended).length;const total=players.length;const rate=total?Math.round((present/total)*100):0;$("#quickStats").innerHTML=`<strong>${present}/${total}</strong> παρόντες`;$("#attendanceProgress").style.width=rate+"%";if(!players.length){container.innerHTML='<div class="list-empty">👥 Δεν υπάρχουν παίκτες</div>';return}container.innerHTML="";players.forEach(p=>{const rec=appState.attendance.find(a=>a.playerId===p.id&&a.date===date);const card=document.createElement("div");card.className="player-card";card.innerHTML=`<div class="player-card-header"><div class="player-avatar">${getInitials(p.name)}</div><div style="flex:1;"><div style="font-weight:600;">${p.name}</div><div style="font-size:.8rem;color:var(--text-secondary);">${p.position}</div></div><span class="attendance-mark ${rec?.attended?"present":rec?"absent":""}" data-mark="${p.id}">${rec?.attended?"✓":rec?"✗":""}</span></div>`;container.appendChild(card)})};
 
 const renderReports=()=>{renderTeamSelector("#reportTeamSelector");const period=$("#reportPeriod").value;let startDate=new Date();if(period==="week")startDate.setDate(startDate.getDate()-7);else if(period==="month")startDate.setMonth(startDate.getMonth()-1);else if(period==="quarter")startDate.setMonth(startDate.getMonth()-3);else startDate.setFullYear(startDate.getFullYear()-1);const teamPlayerIds=getTeamPlayers().map(p=>p.id);const records=appState.attendance.filter(a=>new Date(a.date)>=startDate&&teamPlayerIds.includes(a.playerId));const present=records.filter(a=>a.attended).length;const avgRate=records.length?Math.round((present/records.length)*100):0;$("#reportTotalSessions").textContent=new Set(records.map(r=>r.date)).size;$("#reportAvgAttendance").textContent=avgRate+"%";const playerStats={};records.forEach(r=>{if(!playerStats[r.playerId])playerStats[r.playerId]={total:0,present:0};playerStats[r.playerId].total++;if(r.attended)playerStats[r.playerId].present++});let topPlayer=null;let topRate=0;Object.keys(playerStats).forEach(pid=>{const rate=(playerStats[pid].present/playerStats[pid].total)*100;if(rate>topRate){topRate=rate;topPlayer=appState.players.find(p=>p.id===pid)}});$("#reportTopPlayer").textContent=topPlayer?topPlayer.name.split(" ")[0]:"-";renderPlayerAttendanceChart(playerStats)};
 
-const renderPlayerAttendanceChart=(stats)=>{const container=$("#playerAttendanceChart");const data=Object.keys(stats).map(pid=>{const player=appState.players.find(p=>p.id===pid);if(!player)return null;const rate=Math.round((stats[pid].present/stats[pid].total)*100);return{player,rate}}).filter(Boolean).sort((a,b)=>b.rate-a.rate).slice(0,10);if(!data.length){container.innerHTML='<div class="list-empty">📊 Δεν υπάρχουν</div>';return}const maxRate=Math.max(...data.map(d=>d.rate),1);container.innerHTML=data.map(d=>{const height=(d.rate/maxRate)*100;return`<div class="bar" style="height:${height}%;"><div class="bar-value">${d.rate}%</div><div class="bar-label">${d.player.name.split(" ")[0]}</div></div>`}).join("")};
+const renderPlayerAttendanceChart=(stats)=>{const container=$("#playerAttendanceChart");const data=Object.keys(stats).map(pid=>{const player=appState.players.find(p=>p.id===pid);if(!player)return null;const rate=Math.round((stats[pid].present/stats[pid].total)*100);return{player,rate}}).filter(Boolean).sort((a,b)=>b.rate-a.rate).slice(0,10);if(!data.length){container.innerHTML='<div class="list-empty">📊 Δεν υπάρχουν δεδομένα</div>';return}const maxRate=Math.max(...data.map(d=>d.rate),1);container.innerHTML=data.map(d=>{const height=(d.rate/maxRate)*100;return`<div class="bar" style="height:${height}%;"><div class="bar-value">${d.rate}%</div><div class="bar-label">${d.player.name.split(" ")[0]}</div></div>`}).join("")};
 
-const renderSettings=()=>{$("#clubName").value=appState.settings.clubName;$("#coachName").value=appState.settings.coachName;$("#autoSyncEnabled").checked=appState.settings.autoSyncEnabled;$("#notificationsEnabled").checked=appState.settings.notificationsEnabled;$("#backgroundSyncEnabled").checked=appState.settings.backgroundSyncEnabled;$("#brandName").textContent=appState.settings.clubName;$("#syncCode").textContent=appState.sync.syncCode||"XXXX-XXXX";$("#lastSyncTime").textContent=appState.sync.lastSync?formatTime(appState.sync.lastSync):"-";$("#connectionStatus").textContent=db?"🟢 Συνδεδεμένο":"🔴 Αποσυνδεδεμένο";checkFeatureStatus()};
+const renderSettings=()=>{$("#clubName").value=appState.settings.clubName;$("#coachName").value=appState.settings.coachName;$("#autoSyncEnabled").checked=appState.settings.autoSyncEnabled;$("#brandName").textContent=appState.settings.clubName;$("#syncCode").textContent=appState.sync.syncCode||"XXXX-XXXX";$("#lastSyncTime").textContent=appState.sync.lastSync?formatTime(appState.sync.lastSync):"-";$("#connectionStatus").textContent=db?"🟢 Συνδεδεμένο":"🔴 Αποσυνδεδεμένο";checkPWAStatus()};
 
-const checkFeatureStatus=()=>{
+const checkPWAStatus=()=>{
   if(window.matchMedia('(display-mode: standalone)').matches){
     $("#pwaStatus").innerHTML='<span style="color:var(--success)">✅ Installed</span>';
   }else{
@@ -914,57 +685,131 @@ const checkFeatureStatus=()=>{
       $("#cacheStatus").innerHTML=names.length>0?'<span style="color:var(--success)">✅ Active</span>':'<span style="color:var(--text-secondary)">⏳ Loading</span>';
     });
   }
-  
-  $("#pushStatus").innerHTML=Notification.permission==='granted'?'<span style="color:var(--success)">✅ Enabled</span>':'<span style="color:var(--text-secondary)">⏹️ Disabled</span>';
-  
-  $("#bgSyncStatus").innerHTML=('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype)?'<span style="color:var(--success)">✅ Supported</span>':'<span style="color:var(--danger)">❌ Not supported</span>';
-  
-  $("#cameraStatus").innerHTML=('mediaDevices' in navigator)?'<span style="color:var(--success)">✅ Available</span>':'<span style="color:var(--danger)">❌ Not available</span>';
-  
-  $("#geoStatus").innerHTML=('geolocation' in navigator)?'<span style="color:var(--success)">✅ Available</span>':'<span style="color:var(--danger)">❌ Not available</span>';
 };
 
 // ============================================
-// 🎯 EVENT LISTENERS
+// 🎯 EVENT LISTENERS (FIXED)
 // ============================================
 $("#themeToggle").addEventListener("click",()=>{appState.settings.theme=appState.settings.theme==="dark"?"light":"dark";applyTheme();saveStateDebounced()});
 $$(".tab-btn").forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
 $$("[data-close]").forEach(btn=>btn.addEventListener("click",()=>closeModal(btn.dataset.close)));
 $$(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)closeModal(m.id)}));
 
-$("#shareReportBtn").addEventListener("click",shareReport);
-
-$("#addTeamBtn").addEventListener("click",()=>{editingTeamId=null;$("#teamForm").reset();$("#teamLocation").value="";openModal("teamModal")});
-$("#teamForm").addEventListener("submit",e=>{e.preventDefault();const payload={name:$("#teamName").value.trim(),description:$("#teamDesc").value.trim(),color:$("#teamColor").value,location:$("#teamLocation").value.trim()||null};if(!payload.name)return showToast("❌ Όνομα","error");if(editingTeamId){const idx=appState.teams.findIndex(t=>t.id===editingTeamId);appState.teams[idx]={...appState.teams[idx],...payload}}else{appState.teams.push({id:uid(),...payload})}saveStateDebounced();renderTeams();closeModal("teamModal");showToast("✅ OK","success")});
-
-$("#getLocationBtn").addEventListener("click",async()=>{
-  try{
-    showToast("📍 Εντοπισμός...","info");
-    const location=await getCurrentLocation();
-    const address=await getAddressFromCoords(location.lat,location.lng);
-    $("#teamLocation").value=address;
-    showToast("✅ Τοποθεσία εντοπίστηκε!","success");
-  }catch(e){
-    console.error('Location error:',e);
-    showToast("❌ Δεν ήταν δυνατός ο εντοπισμός","error");
-  }
+// TEAMS
+$("#addTeamBtn").addEventListener("click",()=>{
+  editingTeamId=null;
+  $("#teamForm").reset();
+  $("#teamModalTitle").textContent="Νέο Τμήμα";
+  openModal("teamModal");
 });
 
-$("#addPlayerBtn").addEventListener("click",()=>{editingPlayerId=null;$("#playerForm").reset();currentPhotoData=null;$("#cameraPreview").innerHTML='<span style="color:var(--text-secondary);">Πάτα για φωτογραφία</span>';$("#removePhotoBtn").style.display="none";updateTeamSelects();openModal("playerModal")});
+$("#teamForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const payload={
+    name:$("#teamName").value.trim(),
+    description:$("#teamDesc").value.trim(),
+    color:$("#teamColor").value
+  };
+  
+  if(!payload.name)return showToast("❌ Το όνομα είναι υποχρεωτικό","error");
+  
+  if(editingTeamId){
+    const idx=appState.teams.findIndex(t=>t.id===editingTeamId);
+    if(idx>=0){
+      appState.teams[idx]={...appState.teams[idx],...payload};
+    }
+  }else{
+    appState.teams.push({id:uid(),...payload});
+  }
+  
+  saveStateDebounced();
+  closeModal("teamModal");
+  renderTeams();
+  renderTeamSelector("#dashboardTeamSelector");
+  renderTeamSelector("#playerTeamSelector");
+  renderTeamSelector("#scheduleTeamSelector");
+  renderTeamSelector("#attendanceTeamSelector");
+  renderTeamSelector("#reportTeamSelector");
+  showToast("✅ Τμήμα αποθηκεύτηκε!","success");
+});
 
-$("#takeCameraBtn").addEventListener("click",startCamera);
-$("#takePhotoBtn").addEventListener("click",selectPhotoFromGallery);
-$("#capturePhotoBtn").addEventListener("click",capturePhoto);
-$("#removePhotoBtn").addEventListener("click",removePhoto);
+// PLAYERS
+$("#addPlayerBtn").addEventListener("click",()=>{
+  editingPlayerId=null;
+  $("#playerForm").reset();
+  $("#playerModalTitle").textContent="Νέος Παίκτης";
+  updateTeamSelects();
+  openModal("playerModal");
+});
 
-$("#playerForm").addEventListener("submit",e=>{e.preventDefault();const payload={name:$("#playerName").value.trim(),position:$("#playerPosition").value,teamId:$("#playerTeam").value,active:$("#playerActive").checked,photo:currentPhotoData||null,registrationDate:todayISO()};if(!payload.name||!payload.position)return showToast("❌ Συμπλήρωσε","error");if(editingPlayerId){const idx=appState.players.findIndex(p=>p.id===editingPlayerId);appState.players[idx]={...appState.players[idx],...payload}}else{appState.players.push({id:uid(),...payload})}saveStateDebounced();renderPlayers();closeModal("playerModal");showToast("✅ OK","success")});
+$("#playerForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const payload={
+    name:$("#playerName").value.trim(),
+    position:$("#playerPosition").value,
+    teamId:$("#playerTeam").value,
+    active:$("#playerActive").checked,
+    registrationDate:todayISO()
+  };
+  
+  if(!payload.name||!payload.position)return showToast("❌ Συμπλήρωσε όλα τα πεδία","error");
+  
+  if(editingPlayerId){
+    const idx=appState.players.findIndex(p=>p.id===editingPlayerId);
+    if(idx>=0){
+      appState.players[idx]={...appState.players[idx],...payload};
+    }
+  }else{
+    appState.players.push({id:uid(),...payload});
+  }
+  
+  saveStateDebounced();
+  closeModal("playerModal");
+  renderPlayers();
+  renderDashboard();
+  showToast("✅ Παίκτης αποθηκεύτηκε!","success");
+});
 
-$("#addScheduleBtn").addEventListener("click",()=>{editingScheduleId=null;$("#scheduleForm").reset();updateTeamSelects();openModal("scheduleModal")});
-$("#scheduleForm").addEventListener("submit",e=>{e.preventDefault();const payload={dayOfWeek:parseInt($("#scheduleDay").value),time:$("#scheduleTime").value,type:$("#scheduleType").value.trim(),location:$("#scheduleLocation").value.trim(),teamId:$("#scheduleTeam").value,notifyEnabled:$("#notifySchedule").checked};if(!payload.type)return showToast("❌ Τύπος","error");if(editingScheduleId){const idx=appState.schedules.findIndex(s=>s.id===editingScheduleId);appState.schedules[idx]={...appState.schedules[idx],...payload}}else{const newSchedule={id:uid(),...payload};appState.schedules.push(newSchedule);if(payload.notifyEnabled&&appState.settings.notificationsEnabled){scheduleTrainingNotification(newSchedule)}}saveStateDebounced();renderSchedule();closeModal("scheduleModal");showToast("✅ OK","success")});
+// SCHEDULES
+$("#addScheduleBtn").addEventListener("click",()=>{
+  editingScheduleId=null;
+  $("#scheduleForm").reset();
+  updateTeamSelects();
+  openModal("scheduleModal");
+});
 
+$("#scheduleForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const payload={
+    dayOfWeek:parseInt($("#scheduleDay").value),
+    time:$("#scheduleTime").value,
+    type:$("#scheduleType").value.trim(),
+    location:$("#scheduleLocation").value.trim(),
+    teamId:$("#scheduleTeam").value
+  };
+  
+  if(!payload.type)return showToast("❌ Ο τύπος προπόνησης είναι υποχρεωτικός","error");
+  
+  if(editingScheduleId){
+    const idx=appState.schedules.findIndex(s=>s.id===editingScheduleId);
+    if(idx>=0){
+      appState.schedules[idx]={...appState.schedules[idx],...payload};
+    }
+  }else{
+    appState.schedules.push({id:uid(),...payload});
+  }
+  
+  saveStateDebounced();
+  closeModal("scheduleModal");
+  renderSchedule();
+  renderDashboard();
+  showToast("✅ Προπόνηση αποθηκεύτηκε!","success");
+});
+
+// ATTENDANCE
 $("#markAttendanceBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;const players=getTeamPlayers().filter(p=>p.active);const list=$("#attendancePlayersList");list.innerHTML="";players.forEach(p=>{const rec=appState.attendance.find(a=>a.playerId===p.id&&a.date===date);const div=document.createElement("div");div.style.cssText="display:flex;align-items:center;gap:.5rem;padding:.75rem;background:var(--bg-secondary);border-radius:.5rem;margin-bottom:.5rem;";div.innerHTML=`<label style="flex:1;cursor:pointer;"><input type="checkbox" data-playerid="${p.id}" ${rec?.attended?"checked":""}> ${p.name}</label>`;list.appendChild(div)});openModal("attendanceModal")});
 
-$("#attendanceForm").addEventListener("submit",e=>{e.preventDefault();const date=$("#attendanceDate").value;$$('#attendancePlayersList input[type="checkbox"]').forEach(cb=>{const playerId=cb.dataset.playerid;const attended=cb.checked;const existIdx=appState.attendance.findIndex(a=>a.playerId===playerId&&a.date===date);const payload={playerId,date,attended,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveStateDebounced();closeModal("attendanceModal");renderAttendanceList();renderDashboard();showToast("✅ Αποθηκεύτηκε","success")});
+$("#attendanceForm").addEventListener("submit",e=>{e.preventDefault();const date=$("#attendanceDate").value;$$('#attendancePlayersList input[type="checkbox"]').forEach(cb=>{const playerId=cb.dataset.playerid;const attended=cb.checked;const existIdx=appState.attendance.findIndex(a=>a.playerId===playerId&&a.date===date);const payload={playerId,date,attended,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveStateDebounced();closeModal("attendanceModal");renderAttendanceList();renderDashboard();showToast("✅ Παρουσίες αποθηκεύτηκαν!","success")});
 
 $("#attendanceContainer").addEventListener("click",e=>{const mark=e.target.closest("[data-mark]");if(!mark)return;const playerId=mark.dataset.mark;const date=$("#attendanceDate").value;const rec=appState.attendance.find(a=>a.playerId===playerId&&a.date===date);const attended=!rec?.attended;const payload={playerId,date,attended,timestamp:Date.now()};if(rec){const idx=appState.attendance.findIndex(a=>a.id===rec.id);appState.attendance[idx]={...appState.attendance[idx],...payload}}else{appState.attendance.push({id:uid(),...payload})}saveStateDebounced();renderAttendanceList();renderDashboard()});
 
@@ -972,21 +817,10 @@ $("#allPresentBtn").addEventListener("click",()=>{const date=$("#attendanceDate"
 
 $("#allAbsentBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;getTeamPlayers().filter(p=>p.active).forEach(p=>{const existIdx=appState.attendance.findIndex(a=>a.playerId===p.id&&a.date===date);const payload={playerId:p.id,date,attended:false,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveStateDebounced();renderAttendanceList();renderDashboard()});
 
+// SETTINGS
 $("#clubName").addEventListener("change",e=>{appState.settings.clubName=e.target.value.trim();$("#brandName").textContent=e.target.value.trim();saveStateDebounced()});
 $("#coachName").addEventListener("change",e=>{appState.settings.coachName=e.target.value.trim();saveStateDebounced()});
 $("#autoSyncEnabled").addEventListener("change",e=>{appState.settings.autoSyncEnabled=e.target.checked;saveStateDebounced();if(e.target.checked)startRealtimeSync();else stopRealtimeSync()});
-$("#notificationsEnabled").addEventListener("change",async e=>{
-  if(e.target.checked){
-    const granted=await requestNotificationPermission();
-    if(!granted){
-      e.target.checked=false;
-    }
-  }else{
-    appState.settings.notificationsEnabled=false;
-    saveStateDebounced();
-  }
-});
-$("#backgroundSyncEnabled").addEventListener("change",e=>{appState.settings.backgroundSyncEnabled=e.target.checked;saveStateDebounced()});
 
 $("#generateSyncCodeBtn").addEventListener("click",generateSyncCode);
 
@@ -994,14 +828,14 @@ $("#enterSyncCodeBtn").addEventListener("click",()=>{$("#syncCodeInput").value="
 
 $("#syncCodeInput").addEventListener("input",e=>{let val=e.target.value.replace(/[^A-Z0-9]/gi,'').toUpperCase();if(val.length>4&&!val.includes('-'))val=val.substring(0,4)+"-"+val.substring(4);e.target.value=val.substring(0,9)});
 
-$("#syncCodeForm").addEventListener("submit",e=>{e.preventDefault();const input=$("#syncCodeInput").value.trim().replace(/-/g,'');if(input.length!==8)return showToast("❌ 8 ψηφία","error");const code=input.substring(0,4)+"-"+input.substring(4);stopRealtimeSync();appState.sync.syncCode=code;$("#syncCode").textContent=code;saveStateDebounced();isInitialLoad=true;startRealtimeSync();closeModal("syncCodeModal");showToast("✅ Συγχρονισμός ξεκίνησε","success")});
+$("#syncCodeForm").addEventListener("submit",e=>{e.preventDefault();const input=$("#syncCodeInput").value.trim().replace(/-/g,'');if(input.length!==8)return showToast("❌ Χρειάζονται 8 ψηφία","error");const code=input.substring(0,4)+"-"+input.substring(4);stopRealtimeSync();appState.sync.syncCode=code;$("#syncCode").textContent=code;saveStateDebounced();isInitialLoad=true;startRealtimeSync();closeModal("syncCodeModal");showToast("✅ Συγχρονισμός ξεκίνησε!","success")});
 
-$("#backupBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(appState,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`backup-${todayISO()}.json`;a.click();URL.revokeObjectURL(url);showToast("✅ Backup","success")});
+$("#backupBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(appState,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`backup-${todayISO()}.json`;a.click();URL.revokeObjectURL(url);showToast("✅ Backup κατεβασμένο!","success")});
 
 $("#restoreBtn").addEventListener("click",()=>$("#restoreFile").click());
-$("#restoreFile").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const parsed=JSON.parse(ev.target.result);appState=parsed;saveStateDebounced();renderActiveView();showToast("✅ OK","success")}catch(err){showToast("❌ Error","error")}};reader.readAsText(file)});
+$("#restoreFile").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const parsed=JSON.parse(ev.target.result);appState=parsed;saveStateDebounced();renderActiveView();showToast("✅ Αποκαταστάθηκε!","success")}catch(err){showToast("❌ Σφάλμα αρχείου","error")}};reader.readAsText(file)});
 
-$("#clearDataBtn").addEventListener("click",()=>{if(!confirm("⚠️ Διαγραφή ΟΛΩΝ;"))return;localStorage.clear();location.reload()});
+$("#clearDataBtn").addEventListener("click",()=>{if(!confirm("⚠️ Διαγραφή ΟΛΩΝ των δεδομένων;"))return;localStorage.clear();location.reload()});
 
 $("#searchPlayers").addEventListener("input",e=>{playerFilters.search=e.target.value;renderPlayers()});
 $("#filterPosition").addEventListener("change",e=>{playerFilters.position=e.target.value;renderPlayers()});
@@ -1010,11 +844,95 @@ $("#reportPeriod").addEventListener("change",renderReports);
 $("#generateReportBtn").addEventListener("click",renderReports);
 $("#attendanceDate").addEventListener("change",renderAttendanceList);
 
-$("#teamsContainer").addEventListener("click",e=>{const editBtn=e.target.closest("[data-edit-team]");const delBtn=e.target.closest("[data-del-team]");if(editBtn){const t=appState.teams.find(x=>x.id===editBtn.dataset.editTeam);if(t){editingTeamId=t.id;$("#teamName").value=t.name;$("#teamDesc").value=t.description||"";$("#teamColor").value=t.color;$("#teamLocation").value=t.location||"";openModal("teamModal")}}if(delBtn&&!delBtn.disabled){if(!confirm("⚠️ Διαγραφή;"))return;const id=delBtn.dataset.delTeam;appState.teams=appState.teams.filter(t=>t.id!==id);appState.players=appState.players.filter(p=>p.teamId!==id);saveStateDebounced();renderTeams()}});
-
-$("#playersContainer").addEventListener("click",e=>{const editBtn=e.target.closest("[data-edit-player]");const delBtn=e.target.closest("[data-del-player]");if(editBtn){const p=appState.players.find(x=>x.id===editBtn.dataset.editPlayer);if(p){editingPlayerId=p.id;updateTeamSelects();$("#playerTeam").value=p.teamId;$("#playerName").value=p.name;$("#playerPosition").value=p.position;$("#playerActive").checked=p.active;currentPhotoData=p.photo||null;if(currentPhotoData){$("#cameraPreview").innerHTML=`<img src="${currentPhotoData}" alt="Photo"/>`;$("#removePhotoBtn").style.display="inline-flex"}else{$("#cameraPreview").innerHTML='<span style="color:var(--text-secondary);">Πάτα για φωτογραφία</span>';$("#removePhotoBtn").style.display="none"}openModal("playerModal")}}if(delBtn){if(!confirm("⚠️ Διαγραφή;"))return;appState.players=appState.players.filter(p=>p.id!==delBtn.dataset.delPlayer);appState.attendance=appState.attendance.filter(a=>a.playerId!==delBtn.dataset.delPlayer);saveStateDebounced();renderPlayers()}});
-
-$("#scheduleList").addEventListener("click",e=>{const editBtn=e.target.closest("[data-edit-schedule]");const delBtn=e.target.closest("[data-del-schedule]");if(editBtn){const s=appState.schedules.find(x=>x.id===editBtn.dataset.editSchedule);if(s){editingScheduleId=s.id;updateTeamSelects();$("#scheduleTeam").value=s.teamId;$("#scheduleDay").value=s.dayOfWeek;$("#scheduleTime").value=s.time;$("#scheduleType").value=s.type;$("#scheduleLocation").value=s.location||"";$("#notifySchedule").checked=s.notifyEnabled||false;openModal("scheduleModal")}}if(delBtn){if(!confirm("⚠️ Διαγραφή;"))return;appState.schedules=appState.schedules.filter(s=>s.id!==delBtn.dataset.delSchedule);saveStateDebounced();renderSchedule()}});
+// EVENT DELEGATION FOR DELETE BUTTONS
+document.body.addEventListener("click",e=>{
+  // TEAMS DELETE
+  const delTeamBtn=e.target.closest("[data-del-team]");
+  if(delTeamBtn&&!delTeamBtn.disabled){
+    const id=delTeamBtn.dataset.delTeam;
+    const team=appState.teams.find(t=>t.id===id);
+    if(!confirm(`⚠️ Διαγραφή τμήματος "${team?.name}";`))return;
+    appState.teams=appState.teams.filter(t=>t.id!==id);
+    appState.players=appState.players.filter(p=>p.teamId!==id);
+    appState.schedules=appState.schedules.filter(s=>s.teamId!==id);
+    saveStateDebounced();
+    renderTeams();
+    renderDashboard();
+    showToast("🗑️ Τμήμα διαγράφηκε!","info");
+  }
+  
+  // TEAMS EDIT
+  const editTeamBtn=e.target.closest("[data-edit-team]");
+  if(editTeamBtn){
+    const t=appState.teams.find(x=>x.id===editTeamBtn.dataset.editTeam);
+    if(t){
+      editingTeamId=t.id;
+      $("#teamModalTitle").textContent="Επεξεργασία Τμήματος";
+      $("#teamName").value=t.name;
+      $("#teamDesc").value=t.description||"";
+      $("#teamColor").value=t.color;
+      openModal("teamModal");
+    }
+  }
+  
+  // PLAYERS DELETE
+  const delPlayerBtn=e.target.closest("[data-del-player]");
+  if(delPlayerBtn){
+    const id=delPlayerBtn.dataset.delPlayer;
+    const player=appState.players.find(p=>p.id===id);
+    if(!confirm(`⚠️ Διαγραφή παίκτη "${player?.name}";`))return;
+    appState.players=appState.players.filter(p=>p.id!==id);
+    appState.attendance=appState.attendance.filter(a=>a.playerId!==id);
+    saveStateDebounced();
+    renderPlayers();
+    renderDashboard();
+    showToast("🗑️ Παίκτης διαγράφηκε!","info");
+  }
+  
+  // PLAYERS EDIT
+  const editPlayerBtn=e.target.closest("[data-edit-player]");
+  if(editPlayerBtn){
+    const p=appState.players.find(x=>x.id===editPlayerBtn.dataset.editPlayer);
+    if(p){
+      editingPlayerId=p.id;
+      $("#playerModalTitle").textContent="Επεξεργασία Παίκτη";
+      updateTeamSelects();
+      $("#playerTeam").value=p.teamId;
+      $("#playerName").value=p.name;
+      $("#playerPosition").value=p.position;
+      $("#playerActive").checked=p.active;
+      openModal("playerModal");
+    }
+  }
+  
+  // SCHEDULES DELETE
+  const delScheduleBtn=e.target.closest("[data-del-schedule]");
+  if(delScheduleBtn){
+    const id=delScheduleBtn.dataset.delSchedule;
+    if(!confirm("⚠️ Διαγραφή προπόνησης;"))return;
+    appState.schedules=appState.schedules.filter(s=>s.id!==id);
+    saveStateDebounced();
+    renderSchedule();
+    renderDashboard();
+    showToast("🗑️ Προπόνηση διαγράφηκε!","info");
+  }
+  
+  // SCHEDULES EDIT
+  const editScheduleBtn=e.target.closest("[data-edit-schedule]");
+  if(editScheduleBtn){
+    const s=appState.schedules.find(x=>x.id===editScheduleBtn.dataset.editSchedule);
+    if(s){
+      editingScheduleId=s.id;
+      updateTeamSelects();
+      $("#scheduleTeam").value=s.teamId;
+      $("#scheduleDay").value=s.dayOfWeek;
+      $("#scheduleTime").value=s.time;
+      $("#scheduleType").value=s.type;
+      $("#scheduleLocation").value=s.location||"";
+      openModal("scheduleModal");
+    }
+  }
+});
 
 // ============================================
 // 📱 PWA INSTALLATION
@@ -1054,18 +972,6 @@ if ("serviceWorker" in navigator) {
     .then(reg => {
       console.log("✅ Service Worker registered");
       
-      // Background Sync Event
-      if('sync' in reg){
-        navigator.serviceWorker.addEventListener('message',event=>{
-          if(event.data.type==='SYNC_COMPLETE'){
-            showToast("🔄 Συγχρονισμός ολοκληρώθηκε!","success");
-            loadState();
-            renderActiveView();
-          }
-        });
-      }
-      
-      // Update notification
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         newWorker.addEventListener('statechange', () => {
@@ -1078,28 +984,7 @@ if ("serviceWorker" in navigator) {
       });
     })
     .catch(err => console.error("❌ SW registration failed:", err));
-  
-  // Register FCM Service Worker
-  if(messaging){
-    navigator.serviceWorker.register("/firebase-messaging-sw.js")
-      .then(reg=>console.log("✅ FCM SW registered"))
-      .catch(err=>console.error("❌ FCM SW error:",err));
-  }
 }
-
-// ============================================
-// 📡 ONLINE/OFFLINE EVENTS
-// ============================================
-window.addEventListener('online',()=>{
-  showToast("✅ Σύνδεση αποκαταστάθηκε!","success");
-  if(appState.settings.autoSyncEnabled){
-    saveState();
-  }
-});
-
-window.addEventListener('offline',()=>{
-  showToast("⚠️ Offline mode - οι αλλαγές θα συγχρονιστούν αργότερα","info");
-});
 
 // ============================================
 // 🚀 INITIALIZATION
@@ -1112,31 +997,13 @@ window.addEventListener("DOMContentLoaded",()=>{
     startRealtimeSync();
   }
   
-  // Firebase Messaging foreground handler
-  if(messaging){
-    messaging.onMessage((payload)=>{
-      console.log('Message received:',payload);
-      showToast(`🔔 ${payload.notification.title}`,payload.notification.body,"info");
-      
-      if(Notification.permission==='granted'){
-        new Notification(payload.notification.title,{
-          body:payload.notification.body,
-          icon:'/icon-192.png'
-        });
-      }
-    });
-  }
-  
   setInterval(()=>{$("#timestamp").textContent=new Date().toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"})},1000);
   
-  console.log("✅ App initialized - COMPLETE EDITION");
+  console.log("✅ App initialized - FIXED VERSION");
   console.log("🔑 Sync Code:",appState.sync.syncCode||"none");
-  console.log("🔔 Notifications:",Notification.permission);
-  console.log("📷 Camera:",('mediaDevices' in navigator)?'✅':'❌');
-  console.log("📍 Geolocation:",('geolocation' in navigator)?'✅':'❌');
   
   if(!appState.sync.syncCode){
-    setTimeout(()=>showToast("👋 Δημιούργησε Sync Code για αυτόματο συγχρονισμό!","info"),2000);
+    setTimeout(()=>showToast("👋 Δημιούργησε Sync Code για multi-device!","info"),2000);
   }
 });
 </script>
