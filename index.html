@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="el">
 <head>
 <meta charset="UTF-8"/>
@@ -242,6 +242,14 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 </div>
 </div>
 <div class="team-selector" id="attendanceTeamSelector"></div>
+<div style="display:flex;gap:.5rem;margin-bottom:.65rem;">
+<select id="attendanceEventType" style="flex:1;">
+<option value="">📋 Όλα</option>
+<option value="training">🏃 Προπονήσεις</option>
+<option value="event">🎯 Εκδηλώσεις</option>
+</select>
+<select id="attendanceEventSelect" style="flex:2;"></select>
+</div>
 <div style="padding:.65rem;background:var(--bg-secondary);border-radius:.5rem;margin-bottom:.65rem;"><strong style="font-size:.8rem;">Στατιστικά:</strong> <span id="quickStats" style="font-size:.8rem;">-</span><div class="progress-bar" style="margin-top:.45rem;"><div class="progress-fill" id="attendanceProgress"></div></div></div>
 <div id="attendanceContainer"></div>
 </div>
@@ -391,6 +399,13 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box
 <div class="modal-content">
 <div class="modal-header"><h2 id="eventDetailsTitle">Λεπτομέρειες</h2><button class="close-btn" data-close="eventDetailsModal">&times;</button></div>
 <div id="eventDetailsContent"></div>
+<div style="margin-bottom:.875rem;">
+<h3 style="font-size:.9rem;margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:center;">
+<span>✓ Παρουσίες</span>
+<button class="btn btn-primary" id="quickMarkEventBtn">⚡ Προετοιμασία</button>
+</h3>
+<div id="eventAttendanceList"></div>
+</div>
 <div style="margin-top:1rem;">
 <h3 style="font-size:.9rem;margin-bottom:.5rem;">📝 Σημειώσεις Παικτών</h3>
 <div id="eventPlayerNotes"></div>
@@ -516,7 +531,7 @@ const checkTrainingReminder=()=>{
 
 const autoMarkAttendance=(schedule)=>{
   const date=todayISO();
-  const alreadyMarked=appState.attendance.some(a=>a.date===date&&a.scheduleId===schedule.id);
+  const alreadyMarked=appState.attendance.some(a=>a.date===date&&a.eventId===schedule.id);
   
   if(alreadyMarked)return;
   
@@ -527,7 +542,9 @@ const autoMarkAttendance=(schedule)=>{
         playerId:p.id,
         date:date,
         attended:false,
-        scheduleId:schedule.id,
+        eventType:'training',
+        eventId:schedule.id,
+        notes:'',
         timestamp:Date.now()
       });
     });
@@ -582,6 +599,25 @@ const loadState=()=>{
       saveState();
     }
     if(!appState.events)appState.events=[];
+    
+    // ✅ MIGRATION: Convert old scheduleId to new structure
+    if(appState.attendance && appState.attendance.length > 0){
+      appState.attendance = appState.attendance.map(a => {
+        if(a.scheduleId && !a.eventId){
+          return {
+            ...a,
+            eventType: 'training',
+            eventId: a.scheduleId,
+            notes: a.notes || ''
+          };
+        }
+        if(!a.eventType){
+          a.eventType = a.eventId ? 'training' : 'training';
+          a.notes = a.notes || '';
+        }
+        return a;
+      });
+    }
   }catch(e){
     console.error('Load error:',e)
   }
@@ -752,761 +788,8 @@ const renderDashboard=()=>{
   const weekly=appState.attendance.filter(a=>new Date(a.date)>=weekAgo&&teamPlayerIds.includes(a.playerId));
   const weeklyPresent=weekly.filter(a=>a.attended).length;
   const weeklyRate=weekly.length?Math.round((weeklyPresent/weekly.length)*100):0;
-  $("#weeklyAvg").textContent=weeklyRate+"%";
   
   renderUpcomingSchedule();
   renderWeeklyChart();
 };
 
-const renderUpcomingSchedule=()=>{const container=$("#upcomingSchedule");const now=new Date();const upcoming=sortBy(getTeamSchedules().map(s=>{const next=new Date();const daysUntil=(parseInt(s.dayOfWeek)-next.getDay()+7)%7;next.setDate(next.getDate()+(daysUntil||7));const[h,m]=s.time.split(":");next.setHours(parseInt(h),parseInt(m),0,0);return{...s,nextDate:next.toISOString()}}),"nextDate").slice(0,5);if(!upcoming.length){container.innerHTML='<div class="list-empty">📅 Δεν υπάρχουν προπονήσεις</div>';return}container.innerHTML=upcoming.map(s=>{const nextDate=new Date(s.nextDate);const isToday=nextDate.toDateString()===now.toDateString();return`<div class="schedule-item" style="${isToday?'border-color:var(--accent);border-width:2px;':''}"><div style="flex:1;"><div style="font-weight:600;font-size:.8rem;${isToday?'color:var(--accent);':''}">${dayNameFull(s.dayOfWeek)} ${s.time} ${isToday?'🔥':''}</div><div style="font-size:.7rem;color:var(--text-secondary);">${s.type} • ${s.location||"-"}</div></div></div>`}).join("")};
-
-const renderWeeklyChart=()=>{const container=$("#weeklyChart");const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split("T")[0])}const teamPlayerIds=getTeamPlayers().map(p=>p.id);const data=days.map(date=>{const att=appState.attendance.filter(a=>a.date===date&&teamPlayerIds.includes(a.playerId));const present=att.filter(a=>a.attended).length;return{date,rate:att.length?Math.round((present/att.length)*100):0}});const maxRate=Math.max(...data.map(d=>d.rate),1);container.innerHTML=data.map(d=>{const height=(d.rate/maxRate)*100;return`<div class="bar" style="height:${height}%;"><div class="bar-value">${d.rate}%</div><div class="bar-label">${dayName(new Date(d.date).getDay())}</div></div>`}).join("")};
-
-const renderTeams=()=>{
-  const container=$("#teamsContainer");
-  if(!container)return;
-  
-  container.innerHTML="";
-  
-  if(appState.teams.length===0){
-    container.innerHTML='<div class="list-empty">🏆 Δεν υπάρχουν τμήματα</div>';
-    return;
-  }
-  
-  appState.teams.forEach(t=>{
-    const playerCount=appState.players.filter(p=>p.teamId===t.id).length;
-    const card=document.createElement("div");
-    card.className="player-card";
-    card.innerHTML=`
-      <div class="player-card-header">
-        <div class="player-avatar" style="background:${t.color};">🏆</div>
-        <div style="flex:1;">
-          <div style="font-weight:600;font-size:.85rem;">${t.name}</div>
-          <div style="font-size:.7rem;color:var(--text-secondary);">${playerCount} παίκτες</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:.4rem;">
-        <button class="btn btn-primary" data-edit-team="${t.id}" style="flex:1;">✏️</button>
-        <button class="btn btn-danger" data-del-team="${t.id}" ${t.id==="default"?"disabled":""}>🗑️</button>
-      </div>
-    `;
-    container.appendChild(card);
-  });
-};
-
-const renderPlayers=()=>{
-  renderTeamSelector("#playerTeamSelector");
-  
-  const container=$("#playersContainer");
-  if(!container)return;
-  
-  let players=getTeamPlayers();
-  
-  if(playerFilters.search){
-    const term=playerFilters.search.toLowerCase();
-    players=players.filter(p=>p.name.toLowerCase().includes(term));
-  }
-  if(playerFilters.position)players=players.filter(p=>p.position===playerFilters.position);
-  if(playerFilters.status){
-    const active=playerFilters.status==="active";
-    players=players.filter(p=>p.active===active);
-  }
-  
-  container.innerHTML="";
-  
-  if(!players.length){
-    container.innerHTML='<div class="list-empty">👥 Δεν βρέθηκαν παίκτες</div>';
-    return;
-  }
-  
-  players.forEach(p=>{
-    const rate=getPlayerAttendanceRate(p.id);
-    const card=document.createElement("div");
-    card.className="player-card";
-    card.innerHTML=`
-      <div class="player-card-header">
-        <div class="player-avatar">${getInitials(p.name)}</div>
-        <div style="flex:1;">
-          <div style="font-weight:600;font-size:.85rem;">${p.name}</div>
-          <div style="font-size:.7rem;color:var(--text-secondary);">${p.position}</div>
-        </div>
-        <span class="badge ${p.active?"active":"inactive"}">${p.active?"ON":"OFF"}</span>
-      </div>
-      ${p.notes?`<div class="notes-section"><div style="font-size:.7rem;color:var(--text-secondary);margin-bottom:.25rem;">📝 Σημειώσεις:</div><div style="font-size:.75rem;">${p.notes}</div></div>`:""}
-      <div class="player-stats">
-        <div class="player-stat">
-          <div class="player-stat-value">${rate}%</div>
-          <div class="player-stat-label">Παρουσία</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:.4rem;margin-top:.65rem;">
-        <button class="btn btn-primary" data-edit-player="${p.id}" style="flex:1;">✏️</button>
-        <button class="btn btn-danger" data-del-player="${p.id}">🗑️</button>
-      </div>
-    `;
-    container.appendChild(card);
-  });
-};
-
-const updateTeamSelects=()=>{
-  ["playerTeam","scheduleTeam","eventTeam"].forEach(id=>{
-    const sel=$(`#${id}`);
-    if(!sel)return;
-    sel.innerHTML=appState.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join("");
-    sel.value=getCurrentTeam();
-  });
-};
-
-const renderSchedule=()=>{renderTeamSelector("#scheduleTeamSelector");renderCalendarView();renderScheduleList()};
-
-const renderCalendarView=()=>{
-  const container=$("#calendarView");
-  const today=new Date();
-  container.innerHTML="";
-  
-  for(let i=0;i<7;i++){
-    const date=new Date(today);
-    date.setDate(today.getDate()-today.getDay()+i);
-    const dayNum=date.getDay();
-    const dateStr=date.toISOString().split('T')[0];
-    
-    const trainings=getTeamSchedules().filter(s=>parseInt(s.dayOfWeek)===dayNum);
-    const events=getTeamEvents().filter(e=>e.date===dateStr);
-    
-    const isToday=date.toDateString()===today.toDateString();
-    const div=document.createElement("div");
-    div.className=`calendar-day ${trainings.length>0?'has-training':''} ${events.length>0?'has-event':''} ${isToday?'today':''}`;
-    div.innerHTML=`<div style="font-weight:600;">${dayName(dayNum)}</div><div style="font-size:1rem;">${date.getDate()}</div>${events.length>0?`<div style="font-size:.6rem;">🎯</div>`:''}`;
-    container.appendChild(div);
-  }
-};
-
-const renderScheduleList=()=>{const list=$("#scheduleList");const schedules=sortBy(getTeamSchedules(),"dayOfWeek");if(!schedules.length){list.innerHTML='<div class="list-empty">📅 Προσθέστε προπόνηση</div>';return}list.innerHTML=schedules.map(s=>`<div class="schedule-item"><div style="flex:1;"><div style="font-weight:600;font-size:.8rem;">${dayNameFull(s.dayOfWeek)} ${s.time} ${s.autoAttendance?'🤖':''}</div><div style="font-size:.7rem;color:var(--text-secondary);">${s.type}</div></div><div style="display:flex;gap:.25rem;"><button class="btn" data-edit-schedule="${s.id}">✏️</button><button class="btn btn-danger" data-del-schedule="${s.id}">🗑️</button></div></div>`).join("")};
-
-const renderAttendance=()=>{
-  renderTeamSelector("#attendanceTeamSelector");
-  const dateInput=$("#attendanceDate");
-  if(!dateInput.value)dateInput.value=todayISO();
-  renderAttendanceList();
-};
-
-const renderAttendanceList=()=>{
-  const date=$("#attendanceDate").value;
-  const container=$("#attendanceContainer");
-  const players=sortBy(getTeamPlayers().filter(p=>p.active),"name");
-  
-  const teamPlayerIds=players.map(p=>p.id);
-  const todayAtt=appState.attendance.filter(a=>a.date===date&&teamPlayerIds.includes(a.playerId));
-  const present=todayAtt.filter(a=>a.attended).length;
-  const total=players.length;
-  const rate=total?Math.round((present/total)*100):0;
-  
-  $("#quickStats").innerHTML=`<strong>${present}/${total}</strong> παρόντες`;
-  $("#attendanceProgress").style.width=rate+"%";
-  
-  if(!players.length){
-    container.innerHTML='<div class="list-empty">👥 Δεν υπάρχουν ενεργοί παίκτες</div>';
-    return;
-  }
-  
-  container.innerHTML="";
-  players.forEach(p=>{
-    const rec=appState.attendance.find(a=>a.playerId===p.id&&a.date===date);
-    const card=document.createElement("div");
-    card.className="player-card";
-    card.innerHTML=`
-      <div class="player-card-header">
-        <div class="player-avatar">${getInitials(p.name)}</div>
-        <div style="flex:1;">
-          <div style="font-weight:600;font-size:.85rem;">${p.name}</div>
-          <div style="font-size:.7rem;color:var(--text-secondary);">${p.position}</div>
-        </div>
-        <span class="attendance-mark ${rec?.attended?"present":rec?"absent":""}" data-mark="${p.id}">${rec?.attended?"✓":rec?"✗":""}</span>
-      </div>
-    `;
-    container.appendChild(card);
-  });
-};
-
-const renderEvents=()=>{
-  renderTeamSelector("#eventTeamSelector");
-  const container=$("#eventsContainer");
-  if(!container)return;
-  
-  const events=sortBy(getTeamEvents(),"date","desc");
-  
-  if(!events.length){
-    container.innerHTML='<div class="list-empty">🎯 Δεν υπάρχουν εκδηλώσεις</div>';
-    return;
-  }
-  
-  const today=todayISO();
-  const upcoming=events.filter(e=>e.date>=today);
-  const past=events.filter(e=>e.date<today);
-  
-  container.innerHTML="";
-  
-  if(upcoming.length>0){
-    const header=document.createElement("h3");
-    header.style.cssText="font-size:.85rem;margin-bottom:.5rem;color:var(--accent);";
-    header.textContent="📅 Επερχόμενες";
-    container.appendChild(header);
-    
-    upcoming.forEach(ev=>{
-      const card=document.createElement("div");
-      card.className="event-card";
-      card.innerHTML=`
-        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:.5rem;">
-          <div style="flex:1;">
-            <span class="badge event">${ev.type}</span>
-            <div style="font-weight:600;font-size:.85rem;margin-top:.25rem;">${ev.title}</div>
-            <div style="font-size:.7rem;color:var(--text-secondary);margin-top:.25rem;">
-              📅 ${formatDate(ev.date)} • ⏰ ${ev.time}<br>
-              📍 ${ev.location||'-'}
-            </div>
-          </div>
-          <div style="display:flex;gap:.25rem;">
-            <button class="btn" data-view-event="${ev.id}">👁️</button>
-            <button class="btn" data-edit-event="${ev.id}">✏️</button>
-            <button class="btn btn-danger" data-del-event="${ev.id}">🗑️</button>
-          </div>
-        </div>
-        ${ev.description?`<div style="font-size:.75rem;margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border);">${ev.description}</div>`:''}
-      `;
-      container.appendChild(card);
-    });
-  }
-  
-  if(past.length>0){
-    const header=document.createElement("h3");
-    header.style.cssText="font-size:.85rem;margin:.75rem 0 .5rem 0;color:var(--text-secondary);";
-    header.textContent="📦 Παλαιότερες";
-    container.appendChild(header);
-    
-    past.slice(0,5).forEach(ev=>{
-      const card=document.createElement("div");
-      card.className="event-card";
-      card.style.opacity="0.7";
-      card.innerHTML=`
-        <div style="display:flex;justify-content:space-between;align-items:start;">
-          <div style="flex:1;">
-            <span class="badge event">${ev.type}</span>
-            <div style="font-weight:600;font-size:.8rem;margin-top:.25rem;">${ev.title}</div>
-            <div style="font-size:.7rem;color:var(--text-secondary);margin-top:.25rem;">
-              📅 ${formatDate(ev.date)}
-            </div>
-          </div>
-          <div style="display:flex;gap:.25rem;">
-            <button class="btn" data-view-event="${ev.id}">👁️</button>
-            <button class="btn btn-danger" data-del-event="${ev.id}">🗑️</button>
-          </div>
-        </div>
-      `;
-      container.appendChild(card);
-    });
-  }
-};
-
-const renderReports=()=>{renderTeamSelector("#reportTeamSelector");const period=$("#reportPeriod").value;let startDate=new Date();if(period==="week")startDate.setDate(startDate.getDate()-7);else if(period==="month")startDate.setMonth(startDate.getMonth()-1);else if(period==="quarter")startDate.setMonth(startDate.getMonth()-3);else startDate.setFullYear(startDate.getFullYear()-1);const teamPlayerIds=getTeamPlayers().map(p=>p.id);const records=appState.attendance.filter(a=>new Date(a.date)>=startDate&&teamPlayerIds.includes(a.playerId));const present=records.filter(a=>a.attended).length;const avgRate=records.length?Math.round((present/records.length)*100):0;$("#reportTotalSessions").textContent=new Set(records.map(r=>r.date)).size;$("#reportAvgAttendance").textContent=avgRate+"%";const playerStats={};records.forEach(r=>{if(!playerStats[r.playerId])playerStats[r.playerId]={total:0,present:0};playerStats[r.playerId].total++;if(r.attended)playerStats[r.playerId].present++});let topPlayer=null;let topRate=0;Object.keys(playerStats).forEach(pid=>{const rate=(playerStats[pid].present/playerStats[pid].total)*100;if(rate>topRate){topRate=rate;topPlayer=appState.players.find(p=>p.id===pid)}});$("#reportTopPlayer").textContent=topPlayer?topPlayer.name.split(" ")[0]:"-";renderPlayerAttendanceChart(playerStats)};
-
-const renderPlayerAttendanceChart=(stats)=>{const container=$("#playerAttendanceChart");const data=Object.keys(stats).map(pid=>{const player=appState.players.find(p=>p.id===pid);if(!player)return null;const rate=Math.round((stats[pid].present/stats[pid].total)*100);return{player,rate}}).filter(Boolean).sort((a,b)=>b.rate-a.rate).slice(0,10);if(!data.length){container.innerHTML='<div class="list-empty">📊 Δεν υπάρχουν δεδομένα</div>';return}const maxRate=Math.max(...data.map(d=>d.rate),1);container.innerHTML=data.map(d=>{const height=(d.rate/maxRate)*100;return`<div class="bar" style="height:${height}%;"><div class="bar-value">${d.rate}%</div><div class="bar-label">${d.player.name.split(" ")[0]}</div></div>`}).join("")};
-
-const renderSettings=()=>{
-  $("#clubName").value=appState.settings.clubName||"";
-  $("#coachName").value=appState.settings.coachName||"";
-  $("#autoSyncEnabled").checked=appState.settings.autoSyncEnabled!==false;
-  $("#trainingReminders").checked=appState.settings.trainingReminders!==false;
-  $("#autoAttendance").checked=appState.settings.autoAttendance===true;
-  $("#brandName").textContent=appState.settings.clubName||"SportClub Pro";
-  $("#syncCode").textContent=appState.sync.syncCode||"XXXX-XXXX";
-  $("#lastSyncTime").textContent=appState.sync.lastSync?formatTime(appState.sync.lastSync):"-";
-  $("#connectionStatus").textContent=db?"🟢 Συνδεδεμένο":"🔴 Αποσυνδεδεμένο";
-  checkPWAStatus();
-};
-
-const checkPWAStatus=()=>{
-  if(window.matchMedia('(display-mode: standalone)').matches){
-    $("#pwaStatus").innerHTML='<span style="color:var(--success)">✅ Installed</span>';
-  }else{
-    $("#pwaStatus").innerHTML='<span style="color:var(--warning)">⚠️ Browser</span>';
-  }
-  
-  if('caches' in window){
-    caches.keys().then(names=>{
-      $("#cacheStatus").innerHTML=names.length>0?'<span style="color:var(--success)">✅ Active</span>':'<span style="color:var(--text-secondary)">⏳ Loading</span>';
-    });
-  }
-};
-
-const renderEventDetails=(eventId)=>{
-  const event=appState.events.find(e=>e.id===eventId);
-  if(!event)return;
-  
-  currentEventId=eventId;
-  
-  $("#eventDetailsTitle").textContent=event.title;
-  
-  const content=$("#eventDetailsContent");
-  content.innerHTML=`
-    <div style="background:var(--bg-secondary);padding:.875rem;border-radius:.5rem;margin-bottom:.875rem;">
-      <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
-        <span class="badge event">${event.type}</span>
-      </div>
-      <div style="font-size:.8rem;color:var(--text-secondary);margin-top:.5rem;">
-        📅 ${formatDate(event.date)} • ⏰ ${event.time}<br>
-        📍 ${event.location||'-'}
-      </div>
-      ${event.description?`<div style="margin-top:.65rem;font-size:.8rem;">${event.description}</div>`:''}
-    </div>
-  `;
-  
-  const notesContainer=$("#eventPlayerNotes");
-  notesContainer.innerHTML="";
-  
-  const teamPlayers=getTeamPlayers();
-  teamPlayers.forEach(p=>{
-    const eventNote=event.playerNotes?.[p.id]||"";
-    const div=document.createElement("div");
-    div.style.cssText="margin-bottom:.65rem;";
-    div.innerHTML=`
-      <div style="font-weight:600;font-size:.8rem;margin-bottom:.25rem;">${p.name}</div>
-      <textarea data-player-note="${p.id}" rows="2" style="width:100%;padding:.45rem;border:1px solid var(--border);border-radius:.5rem;background:var(--bg-secondary);color:var(--text-primary);font-size:.75rem;" placeholder="Σημειώσεις για αυτήν την εκδήλωση...">${eventNote}</textarea>
-    `;
-    notesContainer.appendChild(div);
-  });
-  
-  openModal('eventDetailsModal');
-};
-
-// ============================================
-// 🎯 EVENT LISTENERS
-// ============================================
-$("#themeToggle").addEventListener("click",()=>{appState.settings.theme=appState.settings.theme==="dark"?"light":"dark";applyTheme();saveStateDebounced()});
-$$(".tab-btn").forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.view)));
-$$("[data-close]").forEach(btn=>btn.addEventListener("click",()=>closeModal(btn.dataset.close)));
-$$(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)closeModal(m.id)}));
-
-$("#markAttendanceNowBtn").addEventListener("click",()=>{
-  $("#attendanceDate").value=todayISO();
-  switchView('attendance');
-});
-
-// TEAMS
-$("#addTeamBtn").addEventListener("click",()=>{
-  editingTeamId=null;
-  $("#teamForm").reset();
-  $("#teamModalTitle").textContent="Νέο Τμήμα";
-  openModal("teamModal");
-});
-
-$("#teamForm").addEventListener("submit",e=>{
-  e.preventDefault();
-  const payload={
-    name:$("#teamName").value.trim(),
-    description:$("#teamDesc").value.trim(),
-    color:$("#teamColor").value
-  };
-  
-  if(!payload.name)return showToast("❌ Όνομα","error");
-  
-  if(editingTeamId){
-    const idx=appState.teams.findIndex(t=>t.id===editingTeamId);
-    if(idx>=0)appState.teams[idx]={...appState.teams[idx],...payload};
-  }else{
-    appState.teams.push({id:uid(),...payload});
-  }
-  
-  saveState();
-  closeModal("teamModal");
-  renderAllViews();
-  showToast("✅ OK","success");
-});
-
-// PLAYERS
-$("#addPlayerBtn").addEventListener("click",()=>{
-  editingPlayerId=null;
-  $("#playerForm").reset();
-  $("#playerModalTitle").textContent="Νέος Παίκτης";
-  updateTeamSelects();
-  openModal("playerModal");
-});
-
-$("#playerForm").addEventListener("submit",e=>{
-  e.preventDefault();
-  const payload={
-    name:$("#playerName").value.trim(),
-    position:$("#playerPosition").value,
-    teamId:$("#playerTeam").value,
-    active:$("#playerActive").checked,
-    notes:$("#playerNotes").value.trim(),
-    registrationDate:todayISO()
-  };
-  
-  if(!payload.name||!payload.position)return showToast("❌ Συμπλήρωσε","error");
-  
-  if(editingPlayerId){
-    const idx=appState.players.findIndex(p=>p.id===editingPlayerId);
-    if(idx>=0)appState.players[idx]={...appState.players[idx],...payload};
-  }else{
-    appState.players.push({id:uid(),...payload});
-  }
-  
-  saveState();
-  closeModal("playerModal");
-  renderAllViews();
-  showToast("✅ OK","success");
-});
-
-// SCHEDULES
-$("#addScheduleBtn").addEventListener("click",()=>{
-  editingScheduleId=null;
-  $("#scheduleForm").reset();
-  updateTeamSelects();
-  openModal("scheduleModal");
-});
-
-$("#scheduleForm").addEventListener("submit",e=>{
-  e.preventDefault();
-  const payload={
-    dayOfWeek:parseInt($("#scheduleDay").value),
-    time:$("#scheduleTime").value,
-    type:$("#scheduleType").value.trim(),
-    location:$("#scheduleLocation").value.trim(),
-    teamId:$("#scheduleTeam").value,
-    autoAttendance:$("#scheduleAutoAttendance").checked
-  };
-  
-  if(!payload.type)return showToast("❌ Τύπος","error");
-  
-  if(editingScheduleId){
-    const idx=appState.schedules.findIndex(s=>s.id===editingScheduleId);
-    if(idx>=0)appState.schedules[idx]={...appState.schedules[idx],...payload};
-  }else{
-    appState.schedules.push({id:uid(),...payload});
-  }
-  
-  saveState();
-  closeModal("scheduleModal");
-  renderAllViews();
-  showToast("✅ OK","success");
-});
-
-// EVENTS
-$("#addEventBtn").addEventListener("click",()=>{
-  editingEventId=null;
-  $("#eventForm").reset();
-  $("#eventDate").value=todayISO();
-  updateTeamSelects();
-  openModal("eventModal");
-});
-
-$("#eventForm").addEventListener("submit",e=>{
-  e.preventDefault();
-  const payload={
-    teamId:$("#eventTeam").value,
-    type:$("#eventType").value,
-    title:$("#eventTitle").value.trim(),
-    date:$("#eventDate").value,
-    time:$("#eventTime").value,
-    location:$("#eventLocation").value.trim(),
-    description:$("#eventDescription").value.trim(),
-    playerNotes:{},
-    createdAt:nowISO()
-  };
-  
-  if(!payload.title)return showToast("❌ Τίτλος","error");
-  
-  if(editingEventId){
-    const idx=appState.events.findIndex(e=>e.id===editingEventId);
-    if(idx>=0){
-      payload.playerNotes=appState.events[idx].playerNotes||{};
-      appState.events[idx]={...appState.events[idx],...payload};
-    }
-  }else{
-    appState.events.push({id:uid(),...payload});
-  }
-  
-  saveState();
-  closeModal("eventModal");
-  renderAllViews();
-  showToast("✅ Εκδήλωση αποθηκεύτηκε!","success");
-});
-
-$("#saveEventNotesBtn").addEventListener("click",()=>{
-  if(!currentEventId)return;
-  
-  const eventIdx=appState.events.findIndex(e=>e.id===currentEventId);
-  if(eventIdx<0)return;
-  
-  if(!appState.events[eventIdx].playerNotes){
-    appState.events[eventIdx].playerNotes={};
-  }
-  
-  $$('[data-player-note]').forEach(textarea=>{
-    const playerId=textarea.getAttribute('data-player-note');
-    const note=textarea.value.trim();
-    if(note){
-      appState.events[eventIdx].playerNotes[playerId]=note;
-    }else{
-      delete appState.events[eventIdx].playerNotes[playerId];
-    }
-  });
-  
-  saveState();
-  closeModal('eventDetailsModal');
-  showToast("✅ Σημειώσεις αποθηκεύτηκαν!","success");
-});
-
-// ATTENDANCE
-$("#quickMarkBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;getTeamPlayers().filter(p=>p.active).forEach(p=>{const exists=appState.attendance.some(a=>a.playerId===p.id&&a.date===date);if(!exists){appState.attendance.push({id:uid(),playerId:p.id,date:date,attended:false,timestamp:Date.now()})}});saveState();renderAttendanceList();showToast("⚡ Προετοιμασία παρουσιών!","info")});
-
-$("#attendanceContainer").addEventListener("click",e=>{const mark=e.target.closest("[data-mark]");if(!mark)return;const playerId=mark.dataset.mark;const date=$("#attendanceDate").value;const rec=appState.attendance.find(a=>a.playerId===playerId&&a.date===date);const attended=!rec?.attended;const payload={playerId,date,attended,timestamp:Date.now()};if(rec){const idx=appState.attendance.findIndex(a=>a.id===rec.id);appState.attendance[idx]={...appState.attendance[idx],...payload}}else{appState.attendance.push({id:uid(),...payload})}saveState();renderAttendanceList();renderDashboard()});
-
-$("#allPresentBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;getTeamPlayers().filter(p=>p.active).forEach(p=>{const existIdx=appState.attendance.findIndex(a=>a.playerId===p.id&&a.date===date);const payload={playerId:p.id,date,attended:true,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveState();renderAttendanceList();renderDashboard()});
-
-$("#allAbsentBtn").addEventListener("click",()=>{const date=$("#attendanceDate").value;getTeamPlayers().filter(p=>p.active).forEach(p=>{const existIdx=appState.attendance.findIndex(a=>a.playerId===p.id&&a.date===date);const payload={playerId:p.id,date,attended:false,timestamp:Date.now()};if(existIdx>=0)appState.attendance[existIdx]={...appState.attendance[existIdx],...payload};else appState.attendance.push({id:uid(),...payload})});saveState();renderAttendanceList();renderDashboard()});
-
-// SETTINGS
-$("#clubName").addEventListener("change",e=>{appState.settings.clubName=e.target.value.trim();$("#brandName").textContent=e.target.value.trim();saveStateDebounced()});
-$("#coachName").addEventListener("change",e=>{appState.settings.coachName=e.target.value.trim();saveStateDebounced()});
-$("#autoSyncEnabled").addEventListener("change",e=>{appState.settings.autoSyncEnabled=e.target.checked;saveStateDebounced();if(e.target.checked)startRealtimeSync();else stopRealtimeSync()});
-$("#trainingReminders").addEventListener("change",e=>{appState.settings.trainingReminders=e.target.checked;saveStateDebounced()});
-$("#autoAttendance").addEventListener("change",e=>{appState.settings.autoAttendance=e.target.checked;saveStateDebounced()});
-
-$("#generateSyncCodeBtn").addEventListener("click",generateSyncCode);
-$("#enterSyncCodeBtn").addEventListener("click",()=>{$("#syncCodeInput").value="";openModal("syncCodeModal")});
-$("#syncCodeInput").addEventListener("input",e=>{let val=e.target.value.replace(/[^A-Z0-9]/gi,'').toUpperCase();if(val.length>4&&!val.includes('-'))val=val.substring(0,4)+"-"+val.substring(4);e.target.value=val.substring(0,9)});
-$("#syncCodeForm").addEventListener("submit",e=>{e.preventDefault();const input=$("#syncCodeInput").value.trim().replace(/-/g,'');if(input.length!==8)return showToast("❌ 8 ψηφία","error");const code=input.substring(0,4)+"-"+input.substring(4);stopRealtimeSync();appState.sync.syncCode=code;$("#syncCode").textContent=code;saveStateDebounced();isInitialLoad=true;startRealtimeSync();closeModal("syncCodeModal");showToast("✅ OK!","success")});
-
-$("#backupBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(appState,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`backup-${todayISO()}.json`;a.click();URL.revokeObjectURL(url);showToast("✅ Backup!","success")});
-
-$("#restoreBtn").addEventListener("click",()=>$("#restoreFile").click());
-$("#restoreFile").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const parsed=JSON.parse(ev.target.result);appState=parsed;saveState();renderAllViews();showToast("✅ OK!","success")}catch(err){showToast("❌ Error","error")}};reader.readAsText(file)});
-
-$("#clearDataBtn").addEventListener("click",()=>{if(!confirm("⚠️ Διαγραφή ΟΛΩΝ;"))return;localStorage.clear();location.reload()});
-
-$("#searchPlayers").addEventListener("input",e=>{playerFilters.search=e.target.value;renderPlayers()});
-$("#filterPosition").addEventListener("change",e=>{playerFilters.position=e.target.value;renderPlayers()});
-$("#filterStatus").addEventListener("change",e=>{playerFilters.status=e.target.value;renderPlayers()});
-$("#reportPeriod").addEventListener("change",renderReports);
-$("#generateReportBtn").addEventListener("click",renderReports);
-$("#attendanceDate").addEventListener("change",renderAttendanceList);
-
-// EVENT DELEGATION (FIXED)
-document.body.addEventListener("click",e=>{
-  try{
-    if(!e||!e.target)return;
-    
-    const delTeamBtn=e.target.closest("[data-del-team]");
-    if(delTeamBtn&&!delTeamBtn.disabled){
-      const id=delTeamBtn.getAttribute("data-del-team");
-      if(!id)return;
-      const team=appState.teams.find(t=>t.id===id);
-      if(!team)return;
-      if(!confirm(`⚠️ Διαγραφή "${team.name}";`))return;
-      appState.teams=appState.teams.filter(t=>t.id!==id);
-      appState.players=appState.players.filter(p=>p.teamId!==id);
-      appState.schedules=appState.schedules.filter(s=>s.teamId!==id);
-      appState.events=appState.events.filter(ev=>ev.teamId!==id);
-      saveState();
-      renderAllViews();
-      showToast("🗑️ Διαγράφηκε!","info");
-      return;
-    }
-    
-    const editTeamBtn=e.target.closest("[data-edit-team]");
-    if(editTeamBtn){
-      const id=editTeamBtn.getAttribute("data-edit-team");
-      if(!id)return;
-      const t=appState.teams.find(x=>x.id===id);
-      if(t){
-        editingTeamId=t.id;
-        $("#teamModalTitle").textContent="Επεξεργασία";
-        $("#teamName").value=t.name||"";
-        $("#teamDesc").value=t.description||"";
-        $("#teamColor").value=t.color||"#14a34b";
-        openModal("teamModal");
-      }
-      return;
-    }
-    
-    const delPlayerBtn=e.target.closest("[data-del-player]");
-    if(delPlayerBtn){
-      const id=delPlayerBtn.getAttribute("data-del-player");
-      if(!id)return;
-      const player=appState.players.find(p=>p.id===id);
-      if(!player)return;
-      if(!confirm(`⚠️ Διαγραφή "${player.name}";`))return;
-      appState.players=appState.players.filter(p=>p.id!==id);
-      appState.attendance=appState.attendance.filter(a=>a.playerId!==id);
-      saveState();
-      renderAllViews();
-      showToast("🗑️ Διαγράφηκε!","info");
-      return;
-    }
-    
-    const editPlayerBtn=e.target.closest("[data-edit-player]");
-    if(editPlayerBtn){
-      const id=editPlayerBtn.getAttribute("data-edit-player");
-      if(!id)return;
-      const p=appState.players.find(x=>x.id===id);
-      if(p){
-        editingPlayerId=p.id;
-        $("#playerModalTitle").textContent="Επεξεργασία";
-        updateTeamSelects();
-        $("#playerTeam").value=p.teamId||getCurrentTeam();
-        $("#playerName").value=p.name||"";
-        $("#playerPosition").value=p.position||"";
-        $("#playerNotes").value=p.notes||"";
-        $("#playerActive").checked=p.active!==false;
-        openModal("playerModal");
-      }
-      return;
-    }
-    
-    const delScheduleBtn=e.target.closest("[data-del-schedule]");
-    if(delScheduleBtn){
-      const id=delScheduleBtn.getAttribute("data-del-schedule");
-      if(!id)return;
-      if(!confirm("⚠️ Διαγραφή;"))return;
-      appState.schedules=appState.schedules.filter(s=>s.id!==id);
-      saveState();
-      renderAllViews();
-      showToast("🗑️ Διαγράφηκε!","info");
-      return;
-    }
-    
-    const editScheduleBtn=e.target.closest("[data-edit-schedule]");
-    if(editScheduleBtn){
-      const id=editScheduleBtn.getAttribute("data-edit-schedule");
-      if(!id)return;
-      const s=appState.schedules.find(x=>x.id===id);
-      if(s){
-        editingScheduleId=s.id;
-        updateTeamSelects();
-        $("#scheduleTeam").value=s.teamId||getCurrentTeam();
-        $("#scheduleDay").value=s.dayOfWeek||1;
-        $("#scheduleTime").value=s.time||"18:00";
-        $("#scheduleType").value=s.type||"";
-        $("#scheduleLocation").value=s.location||"";
-        $("#scheduleAutoAttendance").checked=s.autoAttendance===true;
-        openModal("scheduleModal");
-      }
-      return;
-    }
-    
-    const viewEventBtn=e.target.closest("[data-view-event]");
-    if(viewEventBtn){
-      const id=viewEventBtn.getAttribute("data-view-event");
-      if(id)renderEventDetails(id);
-      return;
-    }
-    
-    const editEventBtn=e.target.closest("[data-edit-event]");
-    if(editEventBtn){
-      const id=editEventBtn.getAttribute("data-edit-event");
-      if(!id)return;
-      const ev=appState.events.find(x=>x.id===id);
-      if(ev){
-        editingEventId=ev.id;
-        updateTeamSelects();
-        $("#eventTeam").value=ev.teamId||getCurrentTeam();
-        $("#eventType").value=ev.type||"Αγώνας";
-        $("#eventTitle").value=ev.title||"";
-        $("#eventDate").value=ev.date||todayISO();
-        $("#eventTime").value=ev.time||"18:00";
-        $("#eventLocation").value=ev.location||"";
-        $("#eventDescription").value=ev.description||"";
-        openModal("eventModal");
-      }
-      return;
-    }
-    
-    const delEventBtn=e.target.closest("[data-del-event]");
-    if(delEventBtn){
-      const id=delEventBtn.getAttribute("data-del-event");
-      if(!id)return;
-      if(!confirm("⚠️ Διαγραφή εκδήλωσης;"))return;
-      appState.events=appState.events.filter(ev=>ev.id!==id);
-      saveState();
-      renderAllViews();
-      showToast("🗑️ Διαγράφηκε!","info");
-      return;
-    }
-  }catch(err){
-    console.error("❌ Event error:",err);
-  }
-});
-
-// ============================================
-// 📱 PWA INSTALLATION
-// ============================================
-let deferredPrompt;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  $("#installPrompt").classList.add("show");
-});
-
-$("#installBtn").addEventListener("click", async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  if (outcome === 'accepted') showToast("✅ Εγκατάσταση!","success");
-  deferredPrompt = null;
-  $("#installPrompt").classList.remove("show");
-});
-
-window.addEventListener('appinstalled', () => {
-  showToast("🎉 Εγκαταστάθηκε!","success");
-  $("#installPrompt").classList.remove("show");
-});
-
-// ============================================
-// 🚀 SERVICE WORKER
-// ============================================
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js")
-    .then(reg => {
-      console.log("✅ SW registered");
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            if(confirm("🔄 Νέα έκδοση! Επαναφόρτωση;")){
-              window.location.reload();
-            }
-          }
-        });
-      });
-    })
-    .catch(err => console.error("❌ SW error:", err));
-}
-
-// ============================================
-// 🚀 INITIALIZATION
-// ============================================
-window.addEventListener("DOMContentLoaded",()=>{
-  loadState();
-  renderAllViews();
-  
-  if(appState.sync.syncCode){
-    startRealtimeSync();
-  }
-  
-  // Training reminder check every minute
-  reminderInterval=setInterval(checkTrainingReminder,60000);
-  checkTrainingReminder();
-  
-  setInterval(()=>{$("#timestamp").textContent=new Date().toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"})},1000);
-  
-  console.log("✅ App initialized - ENHANCED");
-  
-  if(!appState.sync.syncCode){
-    setTimeout(()=>showToast("👋 Δημιούργησε Sync Code!","info"),2000);
-  }
-});
-</script>
-</body>
-</html>
